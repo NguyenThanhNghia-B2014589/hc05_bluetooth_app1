@@ -1,122 +1,208 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// Lớp để chứa thông tin thiết bị Bluetooth
+class BluetoothDevice {
+  final String name;
+  final String address;
+  final String rssi;
 
-  // This widget is the root of your application.
+  BluetoothDevice({required this.name, required this.address, required this.rssi});
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BluetoothDevice &&
+          runtimeType == other.runtimeType &&
+          address == other.address;
+  @override
+  int get hashCode => address.hashCode;
+}
+
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'HC-05 Bluetooth Demo',
+      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+  const MyHomePage({Key? key}) : super(key: key);
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  static const methodChannel = MethodChannel('com.hc.bluetooth.method_channel');
+  static const eventChannel = EventChannel('com.hc.bluetooth.event_channel');
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  StreamSubscription? _eventSubscription;
+  final List<BluetoothDevice> _scanResults = [];
+  String _status = 'Nhấn nút quét để bắt đầu';
+  bool _isScanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startListeningToEvents();
   }
 
   @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _startListeningToEvents() {
+    _eventSubscription = eventChannel.receiveBroadcastStream().listen((dynamic event) {
+      // Xử lý các loại sự kiện khác nhau từ native
+      final eventType = event['type'];
+
+      if (eventType == 'scanResult') {
+        final device = BluetoothDevice(
+          name: event['name'] ?? 'Unknown Device',
+          address: event['address'] ?? 'Unknown Address',
+          rssi: event['rssi'] ?? 'N/A',
+        );
+        setState(() {
+          _scanResults.removeWhere((d) => d.address == device.address);
+          _scanResults.add(device);
+        });
+      } else if (eventType == 'status') {
+        setState(() {
+          _status = event['message'];
+        });
+      }
+    }, onError: (dynamic error) {
+      setState(() {
+        _status = 'Lỗi nhận sự kiện: ${error.message}';
+      });
+    });
+  }
+
+  Future<void> _startScan() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse, // Thêm quyền này cho chắc chắn
+    ].request();
+
+    if (statuses.values.every((status) => status == PermissionStatus.granted)) {
+      setState(() {
+        _scanResults.clear();
+        _isScanning = true;
+        _status = 'Đang quét...';
+      });
+      try {
+        await methodChannel.invokeMethod('startScan');
+      } on PlatformException catch (e) {
+        setState(() {
+          _status = "Lỗi khi quét: '${e.message}'.";
+          _isScanning = false;
+        });
+      }
+    } else {
+      setState(() {
+        _status = 'Cần cấp quyền Bluetooth và Vị trí để quét.';
+      });
+    }
+  }
+
+  Future<void> _stopScan() async {
+    try {
+      await methodChannel.invokeMethod('stopScan');
+      setState(() {
+        _isScanning = false;
+        _status = 'Đã dừng quét.';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _status = "Lỗi khi dừng quét: '${e.message}'.";
+        _isScanning = false;
+      });
+    }
+  }
+
+  Future<void> _connectToDevice(String address) async {
+    setState(() {
+      _status = 'Đang yêu cầu kết nối tới thiết bị...';
+    });
+    try {
+      await methodChannel.invokeMethod('connect', {'address': address});
+    } on PlatformException catch (e) {
+       setState(() {
+        _status = "Lỗi khi kết nối: '${e.message}'.";
+      });
+    }
+  }
+
+  Future<void> _sendData(String address, String data) async {
+    if (data.isEmpty) return;
+    try {
+      // Chuyển đổi chuỗi String thành mảng byte Uint8List
+      final Uint8List byteData = Uint8List.fromList(data.codeUnits);
+      await methodChannel.invokeMethod('sendData', {'address': address, 'data': byteData});
+    } on PlatformException catch (e) {
+       setState(() {
+        _status = "Lỗi khi gửi: '${e.message}'.";
+      });
+    }
+  }
+
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Bluetooth Scanner'),
+        actions: [
+          _isScanning
+              ? IconButton(
+                  icon: const Icon(Icons.stop),
+                  onPressed: _stopScan,
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _startScan,
+                ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(_status, textAlign: TextAlign.center),
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _scanResults.length,
+              itemBuilder: (context, index) {
+                final device = _scanResults[index];
+                return ListTile(
+                  title: Text(device.name),
+                  subtitle: Text(device.address),
+                  trailing: Text('RSSI: ${device.rssi}'),
+                  onTap: () => _connectToDevice(device.address),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
