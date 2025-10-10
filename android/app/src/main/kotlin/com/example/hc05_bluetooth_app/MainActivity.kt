@@ -1,3 +1,4 @@
+//android/app/src/main/kotlin/com/example/hc05_bluetooth_app/MainActivity.kt
 package com.example.hc05_bluetooth_app
 
 import androidx.annotation.NonNull
@@ -25,18 +26,16 @@ class MainActivity: FlutterActivity(), IBluetooth {
             val device = scannedDevices[call.argument<String>("address")]
             when (call.method) {
                 "startScan" -> {
-                    scannedDevices.clear()
-                    bluetoothManage.mixScan()
-                    result.success("Đã bắt đầu quét hỗn hợp (Classic + BLE)")
+                    scannedDevices.clear(); bluetoothManage.mixScan()
+                    result.success("Đã bắt đầu quét hỗn hợp")
                 }
                 "stopScan" -> {
-                    bluetoothManage.stopScan()
-                    result.success("Đã dừng quét")
+                    bluetoothManage.stopScan(); result.success("Đã dừng quét")
                 }
                 "connect" -> {
                     if (device != null) {
                         bluetoothManage.connect(device)
-                        result.success("Đang yêu cầu kết nối tới ${device.name}...")
+                        result.success("Đang yêu cầu kết nối...")
                     } else {
                         result.error("NOT_FOUND", "Thiết bị không có trong danh sách đã quét.", null)
                     }
@@ -66,51 +65,33 @@ class MainActivity: FlutterActivity(), IBluetooth {
         )
     }
     
-    // --- Cập nhật các hàm IBluetooth để gửi sự kiện ---
-
     private fun sendEvent(event: Map<String, Any?>) {
-        runOnUiThread {
-            eventSink?.success(event)
-        }
+        runOnUiThread { eventSink?.success(event) }
     }
 
     override fun updateList(device: DeviceModule?) {
         if (device != null) {
             scannedDevices[device.mac] = device
-            sendEvent(mapOf(
-                "type" to "scanResult",
-                "name" to device.name,
-                "address" to device.mac,
-                "rssi" to device.rssi.toString()
-            ))
+            sendEvent(mapOf("type" to "scanResult", "name" to device.name, "address" to device.mac, "rssi" to device.rssi.toString()))
         }
     }
 
     override fun connectSucceed(module: DeviceModule?) {
-        sendEvent(mapOf(
-            "type" to "status",
-            "status" to "connected",
-            "message" to "Kết nối thành công tới ${module?.name}"
-        ))
+        sendEvent(mapOf("type" to "status", "status" to "connected", "message" to "Kết nối thành công tới ${module?.name}", "address" to module?.mac))
     }
 
     override fun errorDisconnect(device: DeviceModule?) {
-        sendEvent(mapOf(
-            "type" to "status",
-            "status" to "error",
-            "message" to "Kết nối tới ${device?.name ?: "thiết bị"} thất bại."
-        ))
+        sendEvent(mapOf("type" to "status", "status" to "error", "message" to "Kết nối tới ${device?.name ?: "thiết bị"} thất bại.", "address" to device?.mac))
     }
 
     override fun readData(mac: String?, data: ByteArray?) {
-        // Xử lý khi nhận được dữ liệu (sẽ bổ sung sau)
+        if (data != null) { sendEvent(mapOf("type" to "dataReceived", "data" to data)) }
     }
 
     override fun updateEnd() {
         sendEvent(mapOf("type" to "status", "status" to "scanFinished", "message" to "Quét hoàn tất"))
     }
     
-    // Các hàm khác không cần thay đổi
     override fun updateMessyCode(p0: DeviceModule?) {}
     override fun reading(p0: Boolean) {}
     override fun readNumber(p0: Int) {}
