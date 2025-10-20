@@ -60,16 +60,24 @@ class MainActivity: FlutterActivity(), IBluetooth {
                         result.error("ERROR", "Thiết bị hoặc dữ liệu không hợp lệ.", null)
                     }
                 }
-                // <<< THÊM TÍNH NĂNG MỚI TẠI ĐÂY >>>
                 "setVelocity" -> {
                     val level = call.argument<Int>("level")
-                    if (device != null && level != null) {
-                        // Gọi hàm của thư viện với tham số varargs (int...)
-                        bluetoothManage.setSendFileVelocity(device, level)
-                        android.util.Log.i("BluetoothDebug", "⚙️ Đặt tốc độ: $level cho ${device.mac}")
-                        result.success("Đã đặt tốc độ thành công")
+                    if (level != null) {
+                        try {
+                            // Dùng Reflection để truy cập ModuleParameters
+                            val moduleParamsClass = Class.forName("com.hc.bluetoothlibrary.tootl.ModuleParameters")
+                            val setLevelMethod = moduleParamsClass.getMethod("setLevel", Int::class.javaPrimitiveType)
+                            setLevelMethod.invoke(null, level)
+                            
+                            android.util.Log.i("BluetoothDebug", "⚙️ Đặt level: $level (delay = ${level * 10}ms)")
+                            result.success("Đã đặt tốc độ thành công (delay = ${level * 10}ms)")
+                        } catch (e: Exception) {
+                            android.util.Log.e("BluetoothDebug", "❌ Lỗi setLevel: ${e.message}")
+                            e.printStackTrace()
+                            result.error("ERROR", "Lỗi khi đặt tốc độ: ${e.message}", null)
+                        }
                     } else {
-                        result.error("ERROR", "Thiết bị hoặc level không hợp lệ", null)
+                        result.error("ERROR", "Level không hợp lệ", null)
                     }
                 }
                 else -> result.notImplemented()
@@ -88,7 +96,6 @@ class MainActivity: FlutterActivity(), IBluetooth {
         )
     }
     
-    // Các hàm callback còn lại giữ nguyên, không cần thay đổi
     private fun sendEvent(event: Map<String, Any?>) { runOnUiThread { eventSink?.success(event) } }
     override fun updateList(device: DeviceModule?) {
         if (device != null) {
