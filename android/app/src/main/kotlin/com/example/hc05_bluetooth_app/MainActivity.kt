@@ -1,4 +1,3 @@
-//android/app/src/main/kotlin/com/example/hc05_bluetooth_app/MainActivity.kt
 package com.example.hc05_bluetooth_app
 
 import androidx.annotation.NonNull
@@ -26,11 +25,13 @@ class MainActivity: FlutterActivity(), IBluetooth {
             val device = scannedDevices[call.argument<String>("address")]
             when (call.method) {
                 "startScan" -> {
-                    scannedDevices.clear(); bluetoothManage.mixScan()
+                    scannedDevices.clear()
+                    bluetoothManage.mixScan()
                     result.success("Đã bắt đầu quét hỗn hợp")
                 }
                 "stopScan" -> {
-                    bluetoothManage.stopScan(); result.success("Đã dừng quét")
+                    bluetoothManage.stopScan()
+                    result.success("Đã dừng quét")
                 }
                 "connect" -> {
                     if (device != null) {
@@ -40,13 +41,35 @@ class MainActivity: FlutterActivity(), IBluetooth {
                         result.error("NOT_FOUND", "Thiết bị không có trong danh sách đã quét.", null)
                     }
                 }
+                "disconnect" -> {
+                    if (device != null) {
+                        bluetoothManage.disconnect(device)
+                        result.success("Đã ngắt kết nối")
+                    } else {
+                        result.error("NOT_FOUND", "Thiết bị không tồn tại", null)
+                    }
+                }
                 "sendData" -> {
                     val data = call.argument<ByteArray>("data")
                     if (device != null && data != null) {
+                        val dataString = String(data, Charsets.UTF_8).trim()
+                        android.util.Log.i("BluetoothDebug", "📤 GỬI: $dataString (${data.size} bytes)")
                         bluetoothManage.sendData(device, data)
                         result.success("Đã gửi dữ liệu")
                     } else {
                         result.error("ERROR", "Thiết bị hoặc dữ liệu không hợp lệ.", null)
+                    }
+                }
+                // <<< THÊM TÍNH NĂNG MỚI TẠI ĐÂY >>>
+                "setVelocity" -> {
+                    val level = call.argument<Int>("level")
+                    if (device != null && level != null) {
+                        // Gọi hàm của thư viện với tham số varargs (int...)
+                        bluetoothManage.setSendFileVelocity(device, level)
+                        android.util.Log.i("BluetoothDebug", "⚙️ Đặt tốc độ: $level cho ${device.mac}")
+                        result.success("Đã đặt tốc độ thành công")
+                    } else {
+                        result.error("ERROR", "Thiết bị hoặc level không hợp lệ", null)
                     }
                 }
                 else -> result.notImplemented()
@@ -65,33 +88,32 @@ class MainActivity: FlutterActivity(), IBluetooth {
         )
     }
     
-    private fun sendEvent(event: Map<String, Any?>) {
-        runOnUiThread { eventSink?.success(event) }
-    }
-
+    // Các hàm callback còn lại giữ nguyên, không cần thay đổi
+    private fun sendEvent(event: Map<String, Any?>) { runOnUiThread { eventSink?.success(event) } }
     override fun updateList(device: DeviceModule?) {
         if (device != null) {
             scannedDevices[device.mac] = device
+            android.util.Log.d("BluetoothDebug", "📡 Tìm thấy thiết bị: ${device.name} (${device.mac})")
             sendEvent(mapOf("type" to "scanResult", "name" to device.name, "address" to device.mac, "rssi" to device.rssi.toString()))
         }
     }
-
     override fun connectSucceed(module: DeviceModule?) {
+        android.util.Log.d("BluetoothDebug", "✅ Kết nối thành công: ${module?.name} (${module?.mac})")
         sendEvent(mapOf("type" to "status", "status" to "connected", "message" to "Kết nối thành công tới ${module?.name}", "address" to module?.mac))
     }
-
     override fun errorDisconnect(device: DeviceModule?) {
-        sendEvent(mapOf("type" to "status", "status" to "error", "message" to "Kết nối tới ${device?.name ?: "thiết bị"} thất bại.", "address" to device?.mac))
+        android.util.Log.e("BluetoothDebug", "❌ Mất kết nối: ${device?.name} (${device?.mac})")
+        if (device != null) { bluetoothManage.disconnect(device) }
+        sendEvent(mapOf("type" to "status", "status" to "disconnected", "message" to "Đã mất kết nối với ${device?.name ?: "thiết bị"}", "address" to device?.mac))
     }
-
     override fun readData(mac: String?, data: ByteArray?) {
-        if (data != null) { sendEvent(mapOf("type" to "dataReceived", "data" to data)) }
+        if (data != null) {
+            val dataString = String(data, Charsets.UTF_8).trim()
+            android.util.Log.i("BluetoothDebug", "📥 NHẬN: $dataString (${data.size} bytes)")
+            sendEvent(mapOf("type" to "dataReceived", "data" to data))
+        }
     }
-
-    override fun updateEnd() {
-        sendEvent(mapOf("type" to "status", "status" to "scanFinished", "message" to "Quét hoàn tất"))
-    }
-    
+    override fun updateEnd() { sendEvent(mapOf("type" to "status", "status" to "scanFinished", "message" to "Quét hoàn tất")) }
     override fun updateMessyCode(p0: DeviceModule?) {}
     override fun reading(p0: Boolean) {}
     override fun readNumber(p0: Int) {}
