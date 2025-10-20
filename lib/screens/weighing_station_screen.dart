@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
 
+class WeighingRecord {
+  final String tenPhoiKeo;
+  final String soLo;
+  final String soMay;
+  final double khoiLuongMe;
+  final String nguoiThaoTac;
+  final DateTime thoiGianCan;
+
+  WeighingRecord({
+    required this.tenPhoiKeo,
+    required this.soLo,
+    required this.soMay,
+    required this.khoiLuongMe,
+    required this.nguoiThaoTac,
+    required this.thoiGianCan,
+  });
+}
+
 class WeighingStationScreen extends StatefulWidget {
   const WeighingStationScreen({super.key});
 
@@ -10,6 +28,7 @@ class WeighingStationScreen extends StatefulWidget {
 
 class _WeighingStationScreenState extends State<WeighingStationScreen> {
   final BluetoothService _bluetoothService = BluetoothService();
+  final List<WeighingRecord> _records = []; // Danh sách lưu trữ các bản ghi cân
 
   @override
   void initState() {
@@ -30,15 +49,139 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
       Navigator.of(context).pushReplacementNamed('/scan');
     }
   }
+  // Widget hiển thị bảng cân
+  Widget _buildWeighingTable() {
+  const headerStyle = TextStyle(
+    fontWeight: FontWeight.bold,
+    color: Colors.black87,
+  );
+  const cellStyle = TextStyle(fontSize: 14);
+
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black12.withValues(alpha: 0.15),
+          blurRadius: 6,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        children: [
+          // HEADER
+          Container(
+            color: const Color(0xFF40B9FF), // màu xanh header
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: const [
+                Expanded(
+                    flex: 2,
+                    child: Center(child: Text('Tên Phôi Keo', style: headerStyle))),
+                Expanded(
+                    flex: 1, child: Center(child: Text('Số Lô', style: headerStyle))),
+                Expanded(
+                    flex: 1, child: Center(child: Text('Số Máy', style: headerStyle))),
+                Expanded(
+                    flex: 2,
+                    child:
+                        Center(child: Text('Khối Lượng Mẻ (g)', style: headerStyle))),
+                Expanded(
+                    flex: 2,
+                    child: Center(child: Text('Người Thao Tác', style: headerStyle))),
+                Expanded(
+                    flex: 2,
+                    child: Center(child: Text('Thời Gian Cân', style: headerStyle))),
+              ],
+            ),
+          ),
+
+          // DỮ LIỆU HOẶC THÔNG BÁO TRỐNG
+          if (_records.isEmpty)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFF7F7F7),
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: const Center(
+                child: Text(
+                  'Vui lòng quét mã để hiển thị thông tin',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...List.generate(_records.length, (index) {
+              final record = _records[index];
+              final isEven = index % 2 == 0;
+              return Container(
+                color: isEven ? Colors.white : const Color(0xFFF7F7F7),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Expanded(
+                        flex: 2,
+                        child: Center(
+                            child: Text(record.tenPhoiKeo, style: cellStyle))),
+                    Expanded(
+                        flex: 1,
+                        child:
+                            Center(child: Text(record.soLo, style: cellStyle))),
+                    Expanded(
+                        flex: 1,
+                        child:
+                            Center(child: Text(record.soMay, style: cellStyle))),
+                    Expanded(
+                        flex: 2,
+                        child: Center(
+                            child: Text(
+                                record.khoiLuongMe.toStringAsFixed(1),
+                                style: cellStyle))),
+                    Expanded(
+                        flex: 2,
+                        child: Center(
+                            child: Text(record.nguoiThaoTac,
+                                style: cellStyle))),
+                    Expanded(
+                        flex: 2,
+                        child: Center(
+                            child: Text(
+                              '${record.thoiGianCan.hour.toString().padLeft(2, '0')}:${record.thoiGianCan.minute.toString().padLeft(2, '0')}',
+                              style: cellStyle,
+                            ))),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LƯU TRÌNH CÂN KEO XƯƠNG ĐẾ'),
+        title: const Text('LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ'),
+        // Tự động ẩn nút quay lại vì chúng ta đã xử lý logic chuyển màn hình
+        automaticallyImplyLeading: false, 
         actions: [
+          // Widget hiển thị tên thiết bị
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Row(
               children: [
                 const Icon(Icons.person),
@@ -47,6 +190,17 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
               ],
             )
           ),
+          
+          // --- NÚT NGẮT KẾT NỐI ---
+          IconButton(
+            icon: const Icon(Icons.link_off), // Icon ngắt kết nối
+            tooltip: 'Ngắt kết nối', // Chú thích khi giữ chuột lâu
+            onPressed: () {
+              // Gọi hàm disconnect từ BluetoothService
+              _bluetoothService.disconnect();
+            },
+          ),
+          const SizedBox(width: 8), // Thêm một chút khoảng cách
         ],
       ),
       body: LayoutBuilder(
@@ -62,7 +216,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     );
   }
 
-  // Giao diện cho điện thoại (hình 1)
+  // Giao diện cho điện thoại
   Widget _buildNarrowLayout() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -84,10 +238,10 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     );
   }
   
-  // Giao diện cho tablet (hình 2)
-  Widget _buildWideLayout() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
+  // Giao diện cho tablet
+   Widget _buildWideLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -107,11 +261,8 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
             child: ElevatedButton(onPressed: () {}, child: const Text('Hoàn tất')),
           ),
           const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-          // Bảng dữ liệu (để đơn giản, ta dùng Text)
-          const Center(child: Text('Vui lòng quét mã để hiển thị thông tin')),
-          const Spacer(),
+          _buildWeighingTable(), // Gọi bảng cân
+          const SizedBox(height: 50), 
           _buildScanInput(),
           const SizedBox(height: 20),
         ],
@@ -119,7 +270,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     );
   }
 
-  // Widget hiển thị trọng lượng hiện tại (dùng chung cho cả 2 layout)
+  // Widget hiển thị trọng lượng hiện tại
   Widget _buildCurrentWeightCard() {
     return Card(
       elevation: 4,
@@ -130,24 +281,36 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           children: [
             const Text('Trọng lượng hiện tại', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
-            ValueListenableBuilder<double>(
-              valueListenable: _bluetoothService.currentWeight,
-              builder: (context, weight, child) {
-                return Text(
-                  weight.toStringAsFixed(1), // Hiển thị 1 chữ số thập phân
-                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-                );
-              },
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                ValueListenableBuilder<double>(
+                  valueListenable: _bluetoothService.currentWeight,
+                  builder: (context, weight, child) {
+                    return Text(
+                      weight.toStringAsFixed(3),
+                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'kg',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            const Text('g'),
             const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(
-                labelText: 'Nhập cân nặng',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
+            
+            // --- XÓA BỎ WIDGET NÀY ---
+            // const TextField(
+            //   decoration: InputDecoration(
+            //     labelText: 'Nhập cân nặng', border: OutlineInputBorder(),
+            //   ),
+            //   keyboardType: TextInputType.number,
+            // ),
+            
             const SizedBox(height: 16),
             const Text('Chênh lệch: 0%'),
             const SizedBox(height: 4),
@@ -194,7 +357,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     );
   }
   
-  // Widget input quét mã (dùng chung)
+  // Widget input quét mã
   Widget _buildScanInput() {
     return TextField(
       decoration: InputDecoration(

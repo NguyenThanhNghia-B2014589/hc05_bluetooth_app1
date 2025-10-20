@@ -26,6 +26,10 @@ class BluetoothService {
   // Map nội bộ để quản lý các thiết bị đã quét
   final Map<String, BluetoothDevice> _scannedDevices = {};
 
+  // --- THÊM CÁC BIẾN CHO VIỆC ĐIỀU TIẾT DỮ LIỆU ---
+  //bool _isThrottling = false; // Biến này hoạt động như cái "cổng"
+  //final int _throttleMilliseconds = 500; // Cấu hình thời gian chờ (500ms = 0.5 giây)
+
   // Khởi tạo service, bắt đầu lắng nghe sự kiện từ native
   void initialize() {
     if (_eventSubscription != null) return; // Chỉ khởi tạo một lần
@@ -52,14 +56,75 @@ class BluetoothService {
           isScanning.value = false;
         }
         break;
+    
       case 'dataReceived':
-        final String dataString = utf8.decode(event['data']).trim();
-        // Giả sử dữ liệu cân nặng là một số, ta parse nó
-        final double? weight = double.tryParse(dataString);
-        if (weight != null) {
-          currentWeight.value = weight;
+        // Lấy dữ liệu thô và chuyển thành chuỗi String
+        final String rawDataString = utf8.decode(event['data']).trim();
+        
+        // In ra để chẩn đoán. Đây là bước quan trọng nhất!
+        //print('🔵 Dữ liệu thô nhận được: "$rawDataString"');
+
+        // Sử dụng Biểu thức chính quy (RegExp) để tìm số trong chuỗi
+        // Nó có thể tìm thấy số như "123.45" trong các chuỗi "W:123.45", "Nặng 123.45g", v.v.
+        final RegExp numberRegex = RegExp(r'(\d+\.?\d*)');
+        final Match? match = numberRegex.firstMatch(rawDataString);
+
+        if (match != null) {
+          // Nếu tìm thấy một số trong chuỗi
+          final String numberString = match.group(1)!;
+          final double? weight = double.tryParse(numberString);
+          
+          if (weight != null) {
+            //print('✅ Parse thành công: $weight');
+            currentWeight.value = weight; // Cập nhật giao diện
+          } else {
+            if (kDebugMode) {
+              print('❌ Lỗi: Tìm thấy chuỗi số "$numberString" nhưng không parse được.');
+            }
+          }
+        } else {
+          // Nếu không tìm thấy bất kỳ số nào trong chuỗi
+          if (kDebugMode) {
+            print('⚠️ Không tìm thấy số nào trong chuỗi nhận được.');
+          }
         }
         break;
+
+      /* case 'dataReceived':
+        // Nếu "cổng" đang đóng, bỏ qua dữ liệu và thoát ngay
+        if (_isThrottling) {
+          print('💧 Dữ liệu bị bỏ qua do throttling.');
+          return;
+        }
+
+        // Nếu "cổng" đang mở, cho dữ liệu đi qua và đóng cổng lại ngay
+        _isThrottling = true;
+        
+        // Lên lịch để "mở cổng" trở lại sau khoảng thời gian _throttleMilliseconds
+        Future.delayed(Duration(milliseconds: _throttleMilliseconds), () {
+          _isThrottling = false;
+        });
+
+        // Xử lý gói dữ liệu đã được đi qua cổng
+        final String rawDataString = utf8.decode(event['data']).trim();
+        print('🔵 Dữ liệu thô nhận được (đã qua throttling): "$rawDataString"');
+
+        final RegExp numberRegex = RegExp(r'(\d+\.?\d*)');
+        final Match? match = numberRegex.firstMatch(rawDataString);
+
+        if (match != null) {
+          final String numberString = match.group(1)!;
+          final double? weight = double.tryParse(numberString);
+          if (weight != null) {
+            print('✅ Parse thành công: $weight');
+            currentWeight.value = weight;
+          } else {
+            print('❌ Lỗi: Tìm thấy chuỗi số "$numberString" nhưng không parse được.');
+          }
+        } else {
+          print('⚠️ Không tìm thấy số nào trong chuỗi nhận được.');
+        }
+        break; */
     }
   }
 

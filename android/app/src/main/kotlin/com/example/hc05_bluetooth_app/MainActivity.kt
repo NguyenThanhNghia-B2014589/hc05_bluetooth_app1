@@ -116,7 +116,7 @@ class MainActivity: FlutterActivity(), IBluetooth {
     override fun readData(mac: String?, data: ByteArray?) {
         if (data != null) {
             val dataString = String(data, Charsets.UTF_8).trim()
-            android.util.Log.i("BluetoothDebug", "📥 NHẬN: $dataString (${data.size} bytes)")
+            //android.util.Log.i("BluetoothDebug", "📥 NHẬN: $dataString (${data.size} bytes)")
             sendEvent(mapOf("type" to "dataReceived", "data" to data))
         }
     }

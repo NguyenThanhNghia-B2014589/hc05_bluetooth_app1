@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF0F4F8), // Màu nền giống trong hình
+        scaffoldBackgroundColor: const Color.fromARGB(255, 153, 199, 245), // Màu nền giống trong hình
       ),
       // Khai báo các màn hình (route)
       initialRoute: '/scan', // Bắt đầu ở màn hình quét
