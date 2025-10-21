@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
+import '../services/notification_service.dart';
 
 class WeighingRecord {
   final String tenPhoiKeo;
@@ -91,7 +92,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                 Expanded(
                     flex: 2,
                     child:
-                        Center(child: Text('Khối Lượng Mẻ (g)', style: headerStyle))),
+                        Center(child: Text('Khối Lượng Mẻ (kg)', style: headerStyle))),
                 Expanded(
                     flex: 2,
                     child: Center(child: Text('Người Thao Tác', style: headerStyle))),
@@ -258,7 +259,17 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           const SizedBox(height: 24),
           Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton(onPressed: () {}, child: const Text('Hoàn tất')),
+            child: ElevatedButton(
+              onPressed: () {
+                // WIDGET THÔNG BÁO
+                NotificationService().showToast(
+                  context: context,
+                  message: 'Cân thành công!',
+                  type: ToastType.success,
+                );
+              },
+              child: const Text('Hoàn tất'),
+            ),
           ),
           const SizedBox(height: 24),
           _buildWeighingTable(), // Gọi bảng cân
@@ -290,7 +301,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                   builder: (context, weight, child) {
                     return Text(
                       weight.toStringAsFixed(3),
-                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 60, fontWeight: FontWeight.bold),
                     );
                   },
                 ),
@@ -331,10 +342,10 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
       children: [
-        _buildInfoCard('TIÊU CHUẨN', '0.0 g'),
+        _buildInfoCard('TIÊU CHUẨN', '0.0 kg'),
         _buildInfoCard('% TỐI ĐA', '3%'),
-        _buildInfoCard('MIN', '0.0 g'),
-        _buildInfoCard('MAX', '0.0 g'),
+        _buildInfoCard('MIN', '0.0 kg'),
+        _buildInfoCard('MAX', '0.0 kg'),
       ],
     );
   }

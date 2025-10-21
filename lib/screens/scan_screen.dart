@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/bluetooth_device.dart';
 import '../services/bluetooth_service.dart';
+import '../services/notification_service.dart';
+
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -27,6 +29,11 @@ class _ScanScreenState extends State<ScanScreen> {
   
   void _onConnectionChange() {
     if (_bluetoothService.connectedDevice.value != null && mounted) {
+      NotificationService().showToast(
+        context: context,
+        message: 'Kết nối thành công với ${_bluetoothService.connectedDevice.value!.name}',
+        type: ToastType.success,
+      );
       // Khi kết nối thành công, chuyển sang màn hình Trạm Cân
       Navigator.of(context).pushReplacementNamed('/weighing_station');
     }
