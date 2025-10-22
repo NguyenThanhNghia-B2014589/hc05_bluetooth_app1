@@ -23,6 +23,7 @@ class WeighingStationController with ChangeNotifier {
   double get selectedPercentage => _selectedPercentage;
   double get minWeight => _minWeight;
   double get maxWeight => _maxWeight;
+  double get khoiLuongMe => _standardWeight;
 
   WeighingStationController({required this.bluetoothService});
 
@@ -78,8 +79,39 @@ class WeighingStationController with ChangeNotifier {
     );
     
     _records.insert(0, newRecord);
+
+    if (_records.length > 5) { // Giới hạn chỉ giữ 5 bản ghi gần nhất
+      _records.removeLast(); // Xóa mục cũ nhất (ở cuối danh sách)
+    }
     
     // Báo cho bất kỳ widget nào đang lắng nghe rằng dữ liệu đã thay đổi
     notifyListeners();
+  }
+  
+  // Xử lý logic khi nhấn nút "Hoàn tất".
+  // Trả về true nếu thành công, false nếu thất bại.
+  bool completeCurrentWeighing(double currentWeight) {
+    // 1. Kiểm tra xem có bản ghi nào để "hoàn tất" không
+    if (_records.isEmpty) {
+      return false; // Không có gì để hoàn tất
+    }
+
+    // 2. Kiểm tra xem bản ghi mới nhất đã hoàn tất chưa
+    if (_records[0].isSuccess == true) {
+      return true; // Đã hoàn tất thành công rồi
+    }
+
+    // 3. Kiểm tra trọng lượng có nằm trong phạm vi cho phép không
+    final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
+
+    if (isInRange) {
+      // 4. Nếu ĐẠT: Cập nhật bản ghi và báo cho UI
+      _records[0].isSuccess = true;
+      notifyListeners(); // Báo cho WeighingTable cập nhật màu
+      return true;
+    } else {
+      // 5. Nếu KHÔNG ĐẠT: Không làm gì cả, trả về false
+      return false;
+    }
   }
 }

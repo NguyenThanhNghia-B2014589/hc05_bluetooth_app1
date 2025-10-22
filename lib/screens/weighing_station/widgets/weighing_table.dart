@@ -64,8 +64,15 @@ class WeighingTable extends StatelessWidget {
               itemCount: records.length,
               itemBuilder: (context, index) {
                 final record = records[index];
+                // --- LOGIC CHỌN MÀU MỚI ---
+                Color rowColor;
+                if (record.isSuccess == true) {
+                  rowColor = const Color.fromARGB(255, 202, 240, 206); // Màu xanh lá nếu thành công
+                } else {
+                  rowColor = index.isEven ? Colors.white : Colors.grey.shade50; // Màu sọc vằn
+                }
                 return Container(
-                  color: index.isEven ? Colors.white : Colors.grey.shade50,
+                  color: rowColor,
                   child: IntrinsicHeight(
                     child: Row(
                       children: [

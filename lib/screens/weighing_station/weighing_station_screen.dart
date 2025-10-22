@@ -93,12 +93,20 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Trạm Cân', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Cột bên trái
-              Expanded(flex: 2, child: CurrentWeightCard(bluetoothService: _bluetoothService)),
+              Expanded(
+                flex: 2,
+                child: CurrentWeightCard(
+                  bluetoothService: _bluetoothService,
+                  minWeight: _controller.minWeight,     
+                  maxWeight: _controller.maxWeight,     
+                  khoiLuongMe: _controller.khoiLuongMe,
+                ),
+              ),
               const SizedBox(width: 24),
               // Cột bên phải
               Expanded(
@@ -112,26 +120,54 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                       maxWeight: _controller.maxWeight,
                       onPercentageChanged: _controller.updatePercentage,
                     ), // << WIDGET CHO ACTION BAR
+
                     const SizedBox(height: 20),
                     ScanInputField(onScan: (code) => _controller.handleScan(context, code)), // WIDGET SCAN
                     const SizedBox(height: 20),
+
                     // Nút hoàn tất
-                    ElevatedButton(
-                      onPressed: () {
-                        NotificationService().showToast(
-                          context: context,
-                          message: 'Cân hoàn tất!',
-                          type: ToastType.success,
+                    ValueListenableBuilder<double>(
+                      valueListenable: _bluetoothService.currentWeight,
+                      builder: (context, currentWeight, child) {
+                        
+                        // Xác định trạng thái
+                        final bool isInRange = (currentWeight >= _controller.minWeight) && 
+                                               (currentWeight <= _controller.maxWeight) &&
+                                               _controller.minWeight > 0; // Đảm bảo đã scan
+
+                        // Quyết định màu nút
+                        final Color buttonColor = isInRange ? Colors.green : const Color(0xFFE8EAF6);
+                        final Color textColor = isInRange ? Colors.white : Colors.indigo;
+
+                        return ElevatedButton(
+                          onPressed: () {
+                            // Gọi logic xử lý từ controller
+                            final bool success = _controller.completeCurrentWeighing(currentWeight);
+
+                            if (success) {
+                              NotificationService().showToast(
+                                context: context,
+                                message: 'Cân hoàn tất!',
+                                type: ToastType.success,
+                              );
+                            } else {
+                              NotificationService().showToast(
+                                context: context,
+                                message: 'Lỗi cân: Trọng lượng không nằm trong phạm vi cho phép!',
+                                type: ToastType.error,
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: buttonColor, // Màu nền động
+                            foregroundColor: textColor, // Màu chữ động
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          ),
+                          child: const Text('Hoàn tất'),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE8EAF6),
-                        foregroundColor: Colors.indigo,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      ),
-                      child: const Text('Hoàn tất'),
                     ),
                   ],
                 ),

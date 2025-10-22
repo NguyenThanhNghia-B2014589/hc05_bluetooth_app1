@@ -27,8 +27,8 @@ class BluetoothService {
   final Map<String, BluetoothDevice> _scannedDevices = {};
 
   // --- THÊM CÁC BIẾN CHO VIỆC ĐIỀU TIẾT DỮ LIỆU ---
-  //bool _isThrottling = false; // Biến này hoạt động như cái "cổng"
-  //final int _throttleMilliseconds = 500; // Cấu hình thời gian chờ (500ms = 0.5 giây)
+  bool _isThrottling = false; // Biến này hoạt động như cái "cổng"
+  final int _throttleMilliseconds = 100; // Cấu hình thời gian chờ (500ms = 0.5 giây)
 
   // Khởi tạo service, bắt đầu lắng nghe sự kiện từ native
   void initialize() {
@@ -57,7 +57,7 @@ class BluetoothService {
         }
         break;
     
-      case 'dataReceived':
+      /*case 'dataReceived':
         // Lấy dữ liệu thô và chuyển thành chuỗi String
         final String rawDataString = utf8.decode(event['data']).trim();
         
@@ -88,12 +88,12 @@ class BluetoothService {
             print('⚠️ Không tìm thấy số nào trong chuỗi nhận được.');
           }
         }
-        break;
+        break;*/
 
-      /* case 'dataReceived':
+      case 'dataReceived':
         // Nếu "cổng" đang đóng, bỏ qua dữ liệu và thoát ngay
         if (_isThrottling) {
-          print('💧 Dữ liệu bị bỏ qua do throttling.');
+          // print('💧 Dữ liệu bị bỏ qua do throttling.');
           return;
         }
 
@@ -107,7 +107,7 @@ class BluetoothService {
 
         // Xử lý gói dữ liệu đã được đi qua cổng
         final String rawDataString = utf8.decode(event['data']).trim();
-        print('🔵 Dữ liệu thô nhận được (đã qua throttling): "$rawDataString"');
+        // print('🔵 Dữ liệu thô nhận được (đã qua throttling): "$rawDataString"');
 
         final RegExp numberRegex = RegExp(r'(\d+\.?\d*)');
         final Match? match = numberRegex.firstMatch(rawDataString);
@@ -116,15 +116,20 @@ class BluetoothService {
           final String numberString = match.group(1)!;
           final double? weight = double.tryParse(numberString);
           if (weight != null) {
-            print('✅ Parse thành công: $weight');
-            currentWeight.value = weight;
+            // print('✅ Parse thành công: $weight');
+            currentWeight.value = weight; // Cập nhật UI
           } else {
-            print('❌ Lỗi: Tìm thấy chuỗi số "$numberString" nhưng không parse được.');
+            if (kDebugMode) {
+              print('❌ Lỗi: Tìm thấy chuỗi số "$numberString" nhưng không parse được.');
+            }
           }
         } else {
-          print('⚠️ Không tìm thấy số nào trong chuỗi nhận được.');
+          // Nếu không tìm thấy bất kỳ số nào trong chuỗi
+          if (kDebugMode) {
+            print('⚠️ Không tìm thấy số nào trong chuỗi nhận được: "$rawDataString"');
+          }
         }
-        break; */
+        break;
     }
   }
 
