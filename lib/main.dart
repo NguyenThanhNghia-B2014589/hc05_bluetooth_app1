@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/scan_screen.dart';
-import 'screens/weighing_station_screen.dart';
+import 'screens/weighing_station/weighing_station_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color.fromARGB(255, 153, 199, 245), // Màu nền giống trong hình
+        scaffoldBackgroundColor: const Color.fromARGB(255, 173, 207, 241), // Màu nền
       ),
       // Khai báo các màn hình (route)
       initialRoute: '/scan', // Bắt đầu ở màn hình quét
