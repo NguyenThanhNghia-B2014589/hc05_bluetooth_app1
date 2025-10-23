@@ -23,6 +23,8 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   late final WeighingStationController _controller;
   BluetoothDevice? _lastConnectedDevice; // Biến để "nhớ" thiết bị cuối cùng kết nối
 
+  final TextEditingController _scanTextController = TextEditingController(); // CONTROLLER CHO SCAN INPUT FIELD
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +40,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   void dispose() {
     //_bluetoothService.connectedDevice.removeListener(_onConnectionChange);
     _controller.dispose();
+    _scanTextController.dispose(); // Hủy controller khi màn hình bị hủy
     super.dispose();
   }
 
@@ -218,7 +221,9 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                     ), // << WIDGET CHO ACTION BAR
 
                     const SizedBox(height: 20),
-                    ScanInputField(onScan: (code) => _controller.handleScan(context, code)), // WIDGET SCAN
+                    ScanInputField(
+                      controller: _scanTextController, // SỬ DỤNG CONTROLLER Ở ĐÂY
+                      onScan: (code) => _controller.handleScan(context, code)), // WIDGET SCAN
                     const SizedBox(height: 20),
                     Row(
                         children: [
@@ -257,6 +262,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                                             message: 'Cân hoàn tất!',
                                             type: ToastType.success,
                                           );
+                                          _scanTextController.clear(); // Xóa text khi hoàn tất
                                         } else {
                                           NotificationService().showToast(
                                             context: context,

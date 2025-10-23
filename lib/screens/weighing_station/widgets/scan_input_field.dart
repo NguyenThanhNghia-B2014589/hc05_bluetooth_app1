@@ -1,43 +1,36 @@
 import 'package:flutter/material.dart';
 
-class ScanInputField extends StatefulWidget {
-  // Thêm một hàm callback. Widget này sẽ gọi nó khi người dùng nhấn Scan.
+// 1. Chuyển thành StatelessWidget
+class ScanInputField extends StatelessWidget {
+  
+  // 2. Nhận controller và hàm onScan từ bên ngoài
+  final TextEditingController controller;
   final Function(String code) onScan;
 
-  const ScanInputField({super.key, required this.onScan});
+  const ScanInputField({
+    super.key,
+    required this.controller,
+    required this.onScan,
+  });
 
-  @override
-  State<ScanInputField> createState() => _ScanInputFieldState();
-}
-
-class _ScanInputFieldState extends State<ScanInputField> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleScan() {
-    final code = _controller.text.trim();
+  // 3. Hàm xử lý _handleScan (giờ là hàm private của StatelessWidget)
+  void _handleScan(BuildContext context) {
+    final code = controller.text.trim();
     if (code.isNotEmpty) {
-      widget.onScan(code); // Gọi callback để gửi code lên cho màn hình cha
-      _controller.clear(); // Xóa text sau khi scan
+      onScan(code); // Chỉ gọi callback, KHÔNG clear()
       FocusScope.of(context).unfocus(); // Ẩn bàn phím
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (phần màu sắc giữ nguyên)
     const Color fillColor = Color(0xFFE8F5E9);
     const Color borderColor = Color(0xFFB9E5BC);
     const Color buttonColor = Color(0xFF4CAF50);
 
     return TextField(
-      controller: _controller,
-      onSubmitted: (_) => _handleScan(), // Cho phép nhấn Enter để scan
+      controller: controller, // 4. Dùng controller được truyền vào
+      onSubmitted: (_) => _handleScan(context), // 5. Gọi hàm _handleScan
       decoration: InputDecoration(
         hintText: 'Scan hoặc Nhập mã tại đây...',
         hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
@@ -55,7 +48,7 @@ class _ScanInputFieldState extends State<ScanInputField> {
         suffixIcon: Padding(
           padding: const EdgeInsets.all(5.0),
           child: ElevatedButton.icon(
-            onPressed: _handleScan, // Gọi hàm xử lý scan
+            onPressed: () => _handleScan(context), // 6. Gọi hàm _handleScan
             icon: const Icon(Icons.qr_code_scanner, size: 20),
             label: const Text('Scan'),
             style: ElevatedButton.styleFrom(
