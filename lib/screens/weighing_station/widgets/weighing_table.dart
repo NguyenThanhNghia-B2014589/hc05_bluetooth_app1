@@ -8,8 +8,8 @@ class WeighingTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const headerStyle = TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 13);
-    const cellStyle = TextStyle(fontSize: 14);
+    const headerStyle = TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 20);
+    const cellStyle = TextStyle(fontSize: 20);
 
     Widget verticalDivider() => Container(width: 1, color: Colors.white.withValues(alpha: 1));
     Widget headerCell(String title, int flex) 

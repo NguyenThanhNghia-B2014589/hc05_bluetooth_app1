@@ -3,6 +3,8 @@ import '../../../data/weighing_data.dart';
 import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
 
+enum WeighingType { nhap, xuat }
+
 // Lớp này sẽ là "bộ não" quản lý logic và trạng thái cho WeighingStationScreen
 class WeighingStationController with ChangeNotifier {
   final BluetoothService bluetoothService;
@@ -14,7 +16,7 @@ class WeighingStationController with ChangeNotifier {
   final List<WeighingRecord> _records = [];
   List<WeighingRecord> get records => _records; // Cung cấp getter để UI có thể đọc
 
-  double _selectedPercentage = 0.3; // Mặc định là 0.3%
+  double _selectedPercentage = 1; // Mặc định là 1%
   double _standardWeight = 0.0;
   double _minWeight = 0.0;
   double _maxWeight = 0.0;
@@ -26,6 +28,9 @@ class WeighingStationController with ChangeNotifier {
   double get khoiLuongMe => _standardWeight;
 
   WeighingStationController({required this.bluetoothService});
+
+  WeighingType _selectedWeighingType = WeighingType.nhap; // Mặc định là Cân nhập
+  WeighingType get selectedWeighingType => _selectedWeighingType;
 
   // --- HÀM TÍNH TOÁN MIN/MAX ---
   void _calculateMinMax() {
@@ -44,6 +49,14 @@ class WeighingStationController with ChangeNotifier {
     _selectedPercentage = newPercentage;
     _calculateMinMax(); // Tính toán lại với % mới
     notifyListeners(); // Cập nhật UI
+  }
+
+  // --- HÀM CẬP NHẬT KHI THAY ĐỔI LOẠI CÂN ---
+  void updateWeighingType(WeighingType? newType) {
+    if (newType != null) {
+      _selectedWeighingType = newType;
+      notifyListeners(); // Cập nhật UI
+    }
   }
 
   // --- TOÀN BỘ LOGIC XỬ LÝ SCAN ĐƯỢC CHUYỂN VÀO ĐÂY ---
@@ -80,14 +93,14 @@ class WeighingStationController with ChangeNotifier {
     
     _records.insert(0, newRecord);
 
-    if (_records.length > 5) { // Giới hạn chỉ giữ 5 bản ghi gần nhất
+    if (_records.length > 4) { // Giới hạn chỉ giữ 4 bản ghi gần nhất
       _records.removeLast(); // Xóa mục cũ nhất (ở cuối danh sách)
     }
     
     // Báo cho bất kỳ widget nào đang lắng nghe rằng dữ liệu đã thay đổi
     notifyListeners();
   }
-  
+
   // Xử lý logic khi nhấn nút "Hoàn tất".
   // Trả về true nếu thành công, false nếu thất bại.
   bool completeCurrentWeighing(double currentWeight) {
@@ -105,12 +118,17 @@ class WeighingStationController with ChangeNotifier {
     final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
 
     if (isInRange) {
-      // 4. Nếu ĐẠT: Cập nhật bản ghi và báo cho UI
+      // 4. Nếu ĐẠT: Cập nhật bản ghi
       _records[0].isSuccess = true;
-      notifyListeners(); // Báo cho WeighingTable cập nhật màu
+      // 5. Reset khối lượng mẻ về 0
+      _standardWeight = 0.0;
+      // 6. Tính toán lại min/max (sẽ về 0)
+      _calculateMinMax();
+      // 7. Báo cho TOÀN BỘ UI cập nhật
+      notifyListeners(); 
       return true;
     } else {
-      // 5. Nếu KHÔNG ĐẠT: Không làm gì cả, trả về false
+      // 8. Nếu KHÔNG ĐẠT: Không làm gì cả, trả về false
       return false;
     }
   }

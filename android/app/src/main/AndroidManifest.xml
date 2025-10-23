@@ -9,7 +9,7 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
     
     <application
-        android:label="hc05_bluetooth_app"
+        android:label="Weighing Station"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
