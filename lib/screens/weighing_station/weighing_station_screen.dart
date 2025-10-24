@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import '../../services/bluetooth_service.dart';
 import '../../services/notification_service.dart';
 import './controllers/weighing_station_controller.dart';
-import '../../models/bluetooth_device.dart';
 
 // Import các widget con
 import 'widgets/current_weight_card.dart';
 import 'widgets/action_min_max.dart';
 import 'widgets/scan_input_field.dart';
 import 'widgets/weighing_table.dart';
+import '../../widgets/main_app_bar.dart';
 
 class WeighingStationScreen extends StatefulWidget {
   const WeighingStationScreen({super.key});
@@ -21,7 +21,6 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   // --- SỬ DỤNG DỊCH VỤ BLUETOOTH CHUNG ---
   final BluetoothService _bluetoothService = BluetoothService();
   late final WeighingStationController _controller;
-  BluetoothDevice? _lastConnectedDevice; // Biến để "nhớ" thiết bị cuối cùng kết nối
 
   final TextEditingController _scanTextController = TextEditingController(); // CONTROLLER CHO SCAN INPUT FIELD
 
@@ -31,24 +30,15 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
 
-    _lastConnectedDevice = _bluetoothService.connectedDevice.value;
-    
-   //_bluetoothService.connectedDevice.addListener(_onConnectionChange);
   }
 
   @override
   void dispose() {
-    //_bluetoothService.connectedDevice.removeListener(_onConnectionChange);
     _controller.dispose();
     _scanTextController.dispose(); // Hủy controller khi màn hình bị hủy
     super.dispose();
   }
 
-  /*void _onConnectionChange() {
-    if (_bluetoothService.connectedDevice.value == null && mounted) {
-      Navigator.of(context).pushReplacementNamed('/scan');
-    }
-  }*/
 
   Widget _buildWeighingTypeDropdown() {
   // (AnimatedBuilder đã lắng nghe _controller ở ngoài,
@@ -87,88 +77,18 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   @override
    Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        //automaticallyImplyLeading: false, // Tắt nút quay lại mặc định
+     appBar: MainAppBar(
+        title: 'LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ',
+        bluetoothService: _bluetoothService,
         leading: IconButton(
-         icon: const Icon(Icons.arrow_back), // Icon quay lại trang scan
+          icon: const Icon(Icons.arrow_back),
           tooltip: 'Quay lại trang Scan',
           onPressed: () {
-            // Đảm bảo ngắt kết nối trước khi quay lại
-            _bluetoothService.disconnect(); 
+            // Logic cho nút Back cụ thể của màn hình này
+            _bluetoothService.disconnect();
             Navigator.of(context).pushReplacementNamed('/scan');
           },
         ),
-        actions: [
-          //const Icon(Icons.person, color: Colors.black54),
-          const SizedBox(width: 8),
-          //Text(_bluetoothService.connectedDevice.value?.name ?? 'HC-05', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)),
-          
-          ValueListenableBuilder<BluetoothDevice?>(
-            valueListenable: _bluetoothService.connectedDevice,
-            builder: (context, device, child) {
-              
-              // 1. Cập nhật biến "nhớ" nếu đang kết nối
-              if (device != null) {
-                _lastConnectedDevice = device;
-              }
-              final isConnected = (device != null);
-
-              if (isConnected) {
-                // 2. TRẠNG THÁI: ĐANG KẾT NỐI (MÀU XANH, NGẮT KẾT NỐI)
-                return Row(
-                  children: [
-                    Text(device.name, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)),
-                    IconButton(
-                      icon: const Icon(Icons.link),
-                      color: Colors.green.shade700,
-                      tooltip: 'Ngắt kết nối',
-                      onPressed: () {
-                        _bluetoothService.disconnect();
-                        NotificationService().showToast(
-                          context: context,
-                          message: 'Đã ngắt kết nối!',
-                          type: ToastType.info,
-                        );
-                      },
-                    ),
-                  ],
-                );
-              } else {
-                // 3. TRẠNG THÁI: NGẮT KẾT NỐI (MÀU ĐỎ, KẾT NỐI LẠI)
-                return Row(
-                  children: [
-                    const Text('Chưa kết nối', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)),
-                    IconButton(
-                      icon: const Icon(Icons.link_off),
-                      color: Colors.red,
-                      tooltip: 'Kết nối lại',
-                      onPressed: () {
-                          // 4. KIỂM TRA BIẾN "NHỚ"
-                          if (_lastConnectedDevice != null) {
-                            NotificationService().showToast(
-                              context: context,
-                              message: 'Đang kết nối lại...',
-                              type: ToastType.info
-                            );
-                            _bluetoothService.connectToDevice(_lastConnectedDevice!);
-                          } else {
-                            NotificationService().showToast(
-                              context: context,
-                              message: 'Không thể kết nối lại, vui lòng quay lại trang Scan.',
-                              type: ToastType.error
-                            );
-                          }
-                        },
-                      ),
-                  ],
-                );
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

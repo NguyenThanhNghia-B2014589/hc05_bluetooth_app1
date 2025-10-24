@@ -22,6 +22,9 @@ class BluetoothService {
   final ValueNotifier<String> status = ValueNotifier('Sẵn sàng');
   final ValueNotifier<double> currentWeight = ValueNotifier(0.0);
   final ValueNotifier<bool> isScanning = ValueNotifier(false);
+
+  // Lưu thiết bị đã kết nối gần nhất
+  BluetoothDevice? lastConnectedDevice;
   
   // Map nội bộ để quản lý các thiết bị đã quét
   final Map<String, BluetoothDevice> _scannedDevices = {};
@@ -50,6 +53,7 @@ class BluetoothService {
         status.value = event['message'];
         if (event['status'] == 'connected') {
           connectedDevice.value = _scannedDevices[event['address']];
+          lastConnectedDevice = _scannedDevices[event['address']]; //Lưu thiết bị đã kết nối cuối cùng
         } else if (event['status'] == 'error' || event['status'] == 'disconnected') {
           connectedDevice.value = null;
         } else if (event['status'] == 'scanFinished') {
