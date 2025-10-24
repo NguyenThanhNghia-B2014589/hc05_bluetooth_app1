@@ -69,7 +69,7 @@ class WeighingTable extends StatelessWidget {
                 if (record.isSuccess == true) {
                   rowColor = const Color.fromARGB(255, 202, 240, 206); // Màu xanh lá nếu thành công
                 } else {
-                  rowColor = index.isEven ? Colors.white : Colors.grey.shade50; // Màu sọc vằn
+                  rowColor = index.isEven ? Colors.white : const Color.fromARGB(255, 231, 231, 231); // Màu sọc vằn
                 }
                 return Container(
                   color: rowColor,
