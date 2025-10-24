@@ -78,11 +78,11 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
    Widget build(BuildContext context) {
     return Scaffold(
      appBar: MainAppBar(
-        title: 'LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ',
+        title: 'LƯU TRÌNH CÂN CAO SU XƯỞNG ĐẾ',
         bluetoothService: _bluetoothService,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Quay lại trang Scan',
+          tooltip: 'Quay lại trang chủ',
           onPressed: () {
             // Logic cho nút Back cụ thể của màn hình này
             _bluetoothService.disconnect();

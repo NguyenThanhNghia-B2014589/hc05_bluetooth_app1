@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/Scan/scan_screen.dart';
+import 'screens/connect_blu/connect_blu_screen.dart';
 import 'screens/weighing_station/weighing_station_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/home/home_screen.dart';

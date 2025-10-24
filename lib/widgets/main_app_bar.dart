@@ -34,7 +34,45 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
       // Actions cố định cho layout này
       actions: [
-        const Icon(Icons.person, color: Colors.black54),
+        PopupMenuButton<String>(
+          // Hàm xử lý khi chọn "Đăng xuất"
+          onSelected: (value) {
+            if (value == 'logout') {
+              // 1. Ngắt kết nối Bluetooth (nếu đang kết nối)
+              bluetoothService.disconnect();
+              
+              // 2. Quay về trang login và xóa tất cả các màn hình cũ
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/login', 
+                (Route<dynamic> route) => false // Xóa hết stack
+              );
+            }
+          },
+          // Icon hiển thị trên AppBar
+          icon: const Icon(Icons.person, color: Colors.black54), 
+          tooltip: 'Tuy chọn',
+          // Hàm này xây dựng các mục trong menu
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            
+            // Mục "Đăng xuất"
+            PopupMenuItem<String>(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.red.shade700), // Icon đăng xuất
+                  const SizedBox(width: 12),
+                  const Text('Đăng xuất'),
+                ],
+              ),
+            ),
+
+            // Bạn có thể thêm các mục khác ở đây nếu muốn
+            // PopupMenuItem<String>(
+            //   value: 'settings',
+            //   child: Row(children: [Icon(Icons.settings), Text('Cài đặt')]),
+            // ),
+          ],
+        ),
         const SizedBox(width: 8),
         BluetoothStatusAction(bluetoothService: bluetoothService),
         const SizedBox(width: 8),

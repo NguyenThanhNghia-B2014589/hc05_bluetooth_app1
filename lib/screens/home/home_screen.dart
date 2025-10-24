@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       // 1. Tái sử dụng MainAppBar
       appBar: MainAppBar(
-        title: 'LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ',
+        title: 'LƯU TRÌNH CÂN CAO SU XƯỞNG ĐẾ',
         bluetoothService: _bluetoothService,
         // Không truyền 'leading', AppBar sẽ không có nút back
       ),
