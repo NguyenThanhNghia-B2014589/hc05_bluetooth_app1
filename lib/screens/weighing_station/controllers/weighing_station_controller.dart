@@ -88,7 +88,6 @@ class WeighingStationController with ChangeNotifier {
       soMay: data['soMay']!,
       khoiLuongMe: data['khoiLuongMe']!, 
       nguoiThaoTac: data['nguoiThaoTac']!,
-      thoiGianCan: DateTime.now(), 
     );
     
     _records.insert(0, newRecord);
@@ -120,6 +119,8 @@ class WeighingStationController with ChangeNotifier {
     if (isInRange) {
       // 4. Nếu ĐẠT: Cập nhật bản ghi
       _records[0].isSuccess = true;
+      // Gán thời gian khi hoàn tất cân
+      _records[0].thoiGianCan = DateTime.now();
       // 5. Reset khối lượng mẻ về 0
       _standardWeight = 0.0;
       // 6. Tính toán lại min/max (sẽ về 0)

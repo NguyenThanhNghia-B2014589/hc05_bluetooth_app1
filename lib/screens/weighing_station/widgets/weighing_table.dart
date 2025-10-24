@@ -81,7 +81,24 @@ class WeighingTable extends StatelessWidget {
                         dataCell(record.soMay, 2),
                         dataCell(record.khoiLuongMe.toStringAsFixed(3), 2),
                         dataCell(record.nguoiThaoTac, 2),
-                        dataCell('${record.thoiGianCan.hour.toString().padLeft(2, '0')}:${record.thoiGianCan.minute.toString().padLeft(2, '0')}', 2),
+                        Builder(
+                          builder: (context) {
+                            String thoiGianText;
+                            if (record.thoiGianCan == null) {
+                              thoiGianText = '---'; // chưa có thời gian cân '---'
+                            } else {
+                              final dt = record.thoiGianCan!;
+                              // Định dạng: dd/MM/yyyy HH:mm
+                              final d = dt.day.toString().padLeft(2, '0');
+                              final m = dt.month.toString().padLeft(2, '0');
+                              final y = dt.year;
+                              final h = dt.hour.toString().padLeft(2, '0');
+                              final min = dt.minute.toString().padLeft(2, '0');
+                              thoiGianText = '$d/$m/$y  $h:$min';
+                            }
+                            return dataCell(thoiGianText, 2);
+                          }
+                        ),
                       ],
                     ),
                   ),
