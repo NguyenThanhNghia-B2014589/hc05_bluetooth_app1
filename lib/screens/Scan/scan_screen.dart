@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/bluetooth_device.dart';
-import '../services/bluetooth_service.dart';
-import '../services/notification_service.dart';
+import '../../models/bluetooth_device.dart';
+import '../../services/bluetooth_service.dart';
+import '../../services/notification_service.dart';
 
 
 class ScanScreen extends StatefulWidget {
@@ -31,7 +31,7 @@ class _ScanScreenState extends State<ScanScreen> {
     if (_bluetoothService.connectedDevice.value != null && mounted) {
       NotificationService().showToast(
         context: context,
-        message: 'Kết nối thành công với ${_bluetoothService.connectedDevice.value!.name}',
+        message: 'Kết nối thành công với cân ${_bluetoothService.connectedDevice.value!.name}',
         type: ToastType.success,
       );
       // Khi kết nối thành công, chuyển sang màn hình Trạm Cân
@@ -43,7 +43,15 @@ class _ScanScreenState extends State<ScanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tìm thiết bị Bluetooth'),
+        title: const Text('Tìm kiếm Cân'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Quay lại trang chủ',
+          onPressed: () {
+            _bluetoothService.stopScan(); // Dừng quét nếu đang quét
+            Navigator.of(context).pop(); // Quay về Home
+          },
+        ),
         actions: [
           ValueListenableBuilder<bool>(
             valueListenable: _bluetoothService.isScanning,

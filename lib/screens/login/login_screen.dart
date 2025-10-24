@@ -16,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Cứ đăng nhập là sẽ chuyển trang
     
     // Sử dụng pushReplacementNamed để người dùng không thể "Back" về trang login
-    Navigator.of(context).pushReplacementNamed('/scan');
+    Navigator.of(context).pushReplacementNamed('/home');
   }
 
   @override

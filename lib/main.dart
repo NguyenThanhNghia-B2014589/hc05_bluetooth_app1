@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'screens/scan_screen.dart';
+import 'screens/Scan/scan_screen.dart';
 import 'screens/weighing_station/weighing_station_screen.dart';
 import 'screens/login/login_screen.dart';
+import 'screens/home/home_screen.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -20,9 +22,10 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color.fromARGB(255, 173, 207, 241), // Màu nền
       ),
       // Khai báo các màn hình (route)
-      initialRoute: '/login', // Bắt đầu ở màn hình quét
+      initialRoute: '/login', // Bắt đầu ở màn hình login
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/home': (context) => const HomeScreen(),
         '/scan': (context) => const ScanScreen(),
         '/weighing_station': (context) => const WeighingStationScreen(),
       },

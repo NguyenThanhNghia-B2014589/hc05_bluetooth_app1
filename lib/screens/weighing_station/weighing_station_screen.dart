@@ -86,7 +86,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           onPressed: () {
             // Logic cho nút Back cụ thể của màn hình này
             _bluetoothService.disconnect();
-            Navigator.of(context).pushReplacementNamed('/scan');
+            Navigator.of(context).pop();
           },
         ),
       ),
