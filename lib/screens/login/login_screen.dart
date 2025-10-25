@@ -30,17 +30,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFB0D9F3), // Màu nền xanh nhạt
-      body: Center(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth > 800) {
-              // Giao diện cho màn hình RỘNG (như ảnh của bạn)
-              return _buildWideLayout();
-            } else {
-              // Giao diện cho màn hình HẸP (cho điện thoại)
-              return _buildNarrowLayout();
-            }
-          },
+      body: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            // Đảm bảo nội dung luôn cao ít nhất bằng chiều cao màn hình
+            minHeight: MediaQuery.of(context).size.height, 
+          ),
+          child: Center(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  // Giao diện cho màn hình RỘNG (như ảnh của bạn)
+                  return _buildWideLayout();
+                } else {
+                  // Giao diện cho màn hình HẸP (cho điện thoại)
+                  return _buildNarrowLayout();
+                }
+              },
+            ),
+          ),
         ),
       ),
     );
