@@ -42,8 +42,9 @@ class WeighingTable extends StatelessWidget {
                   headerCell('Tên Phôi Keo', 2), verticalDivider(),
                   headerCell('Số Lô', 2), verticalDivider(),
                   headerCell('Số Máy', 2), verticalDivider(),
-                  headerCell('Khối Lượng Mẻ (kg)', 2), verticalDivider(),
                   headerCell('Người Thao Tác', 2), verticalDivider(),
+                  headerCell('Khối Lượng Mẻ (kg)', 2), verticalDivider(),
+                  headerCell('Khối Lượng Đã Cân (kg)', 2), verticalDivider(),
                   headerCell('Thời Gian Cân', 2),
                 ],
               ),
@@ -79,8 +80,11 @@ class WeighingTable extends StatelessWidget {
                         dataCell(record.tenPhoiKeo, 2),
                         dataCell(record.soLo, 2),
                         dataCell(record.soMay, 2),
-                        dataCell(record.khoiLuongMe.toStringAsFixed(3), 2),
                         dataCell(record.nguoiThaoTac, 2),
+                        dataCell(record.khoiLuongMe.toStringAsFixed(3), 2),
+                        dataCell(
+                          // Nếu chưa cân (null) thì hiển thị '---'
+                          record.khoiLuongDaCan?.toStringAsFixed(3) ?? '---', 2),
                         Builder(
                           builder: (context) {
                             String thoiGianText;

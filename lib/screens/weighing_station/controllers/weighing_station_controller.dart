@@ -117,10 +117,12 @@ class WeighingStationController with ChangeNotifier {
     final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
 
     if (isInRange) {
-      // 4. Nếu ĐẠT: Cập nhật bản ghi
+      // Nếu ĐẠT: Cập nhật bản ghi
       _records[0].isSuccess = true;
       // Gán thời gian khi hoàn tất cân
       _records[0].thoiGianCan = DateTime.now();
+      // Gán khối lượng đã cân
+      _records[0].khoiLuongDaCan = currentWeight;
       // 5. Reset khối lượng mẻ về 0
       _standardWeight = 0.0;
       // 6. Tính toán lại min/max (sẽ về 0)

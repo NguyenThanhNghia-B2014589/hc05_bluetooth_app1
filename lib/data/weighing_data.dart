@@ -7,6 +7,7 @@ class WeighingRecord {
   final String nguoiThaoTac;
   DateTime? thoiGianCan;
   final double? khoiLuongSauCan;
+  double? khoiLuongDaCan;
 
   bool? isSuccess;
 
@@ -18,6 +19,7 @@ class WeighingRecord {
     required this.nguoiThaoTac,
     this.thoiGianCan,
     this.khoiLuongSauCan,
+    this.khoiLuongDaCan,
   });
 }
 
