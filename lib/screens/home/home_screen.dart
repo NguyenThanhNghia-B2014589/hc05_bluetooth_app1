@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     iconPath: 'lib/assets/images/history.png',
                     label: 'Lịch sử cân',
                     onPressed: () {
-                      // TODO: Tạo trang Lịch sử rồi liên kết sau
+                      Navigator.of(context).pushNamed('/history');
                     },
                   ),
                 ],

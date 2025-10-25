@@ -3,6 +3,7 @@ import 'screens/connect_blu/connect_blu_screen.dart';
 import 'screens/weighing_station/weighing_station_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/history/history_screen.dart';
 
 
 void main() {
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/scan': (context) => const ScanScreen(),
         '/weighing_station': (context) => const WeighingStationScreen(),
+        '/history': (context) => const HistoryScreen(),
       },
     );
   }

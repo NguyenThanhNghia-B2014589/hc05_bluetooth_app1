@@ -83,6 +83,7 @@ class WeighingStationController with ChangeNotifier {
     _calculateMinMax();
 
     final newRecord = WeighingRecord(
+      maCode: code,
       tenPhoiKeo: data['tenPhoiKeo']!,
       soLo: data['soLo']!,
       soMay: data['soMay']!,
