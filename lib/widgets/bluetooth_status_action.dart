@@ -63,9 +63,10 @@ class BluetoothStatusAction extends StatelessWidget {
                   } else {
                     NotificationService().showToast(
                       context: context,
-                      message: 'Không thể kết nối lại, vui lòng quay lại trang Scan.',
+                      message: 'Không thể kết nối lại, đang chuyển sang trang Scan.',
                       type: ToastType.error,
                     );
+                    Navigator.of(context).pushNamed('/scan');
                   }
                 },
               ),

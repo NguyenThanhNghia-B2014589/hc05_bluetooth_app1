@@ -78,14 +78,20 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           
-          // 4. Text ở cuối trang
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text(
-              'Weighing Station App',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[800],
+          // Phần footer
+          InkWell(
+            onTap: () {
+              // Lối tắt: Vào thẳng trạm cân không cần BT
+              Navigator.of(context).pushNamed('/weighing_station');
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                'Weighing Station App',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[800],
+                ),
               ),
             ),
           ),
