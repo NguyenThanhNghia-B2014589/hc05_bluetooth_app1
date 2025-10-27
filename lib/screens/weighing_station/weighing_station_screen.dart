@@ -213,7 +213,11 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          WeighingTable(records: _controller.records), // Bảng cân
+          // Bảng cân
+          WeighingTable(
+          records: _controller.records,
+          weighingType: _controller.selectedWeighingType, // <-- TRUYỀN TYPE VÀO
+        ),
           const SizedBox(height: 24),
         ],
       ),

@@ -11,6 +11,7 @@ class WeighingStationController with ChangeNotifier {
   
   // Dữ liệu mẫu được quản lý bên trong controller
   final Map<String, Map<String, dynamic>> _mockData = mockWeighingData;
+  final Map<String, Map<String, dynamic>> _mockStockData = mockLastWeighingData;
 
   // Danh sách các bản ghi, được quản lý bởi controller
   final List<WeighingRecord> _records = [];
@@ -61,9 +62,29 @@ class WeighingStationController with ChangeNotifier {
 
   // --- TOÀN BỘ LOGIC XỬ LÝ SCAN ĐƯỢC CHUYỂN VÀO ĐÂY ---
   void handleScan(BuildContext context, String code) {
-    final data = _mockData[code];
+    // 1. Quyết định xem nên lấy data từ đâu
+    Map<String, dynamic>? data;
+    double? standardWeightValue; // Khối lượng mẻ (nhập) hoặc tồn (xuất)
 
-    if (data == null) {
+    if (_selectedWeighingType == WeighingType.nhap) {
+      // CÂN NHẬP: Lấy data từ mockData (target)
+      data = _mockData[code];
+      if (data != null) {
+        standardWeightValue = data['khoiLuongMe'];
+      }
+    } else {
+      // CÂN XUẤT: Lấy data từ mockStockData (tồn kho)
+      // (Giả sử 2 mock data dùng chung key '123', '456'...)
+      data = _mockStockData[code]; 
+      
+      if (data != null) {
+        // Lấy khối lượng tồn (khoiLuongSauCan) làm khối lượng tiêu chuẩn
+        standardWeightValue = data['khoiLuongSauCan']; 
+      }
+    }
+
+    // 2. Kiểm tra data
+    if (data == null || standardWeightValue == null) {
       NotificationService().showToast(
         context: context,
         message: 'Mã "$code" không hợp lệ!',
@@ -78,26 +99,25 @@ class WeighingStationController with ChangeNotifier {
       type: ToastType.success,
     );
 
-    // Lấy khối lượng mẻ từ data và tính toán MIN/MAX
-    _standardWeight = data['khoiLuongMe']!;
-    _calculateMinMax();
+    // 3. Gán khối lượng mẻ/tồn
+    _standardWeight = standardWeightValue;
+    _calculateMinMax(); // Tính min/max dựa trên khối lượng này
 
+    // 4. Tạo record
     final newRecord = WeighingRecord(
       maCode: code,
       tenPhoiKeo: data['tenPhoiKeo']!,
       soLo: data['soLo']!,
       soMay: data['soMay']!,
-      khoiLuongMe: data['khoiLuongMe']!, 
+      khoiLuongMe: _standardWeight, // Gán _standardWeight (đã được xử lý)
       nguoiThaoTac: data['nguoiThaoTac']!,
     );
     
     _records.insert(0, newRecord);
-
-    if (_records.length > 4) { // Giới hạn chỉ giữ 4 bản ghi gần nhất
-      _records.removeLast(); // Xóa mục cũ nhất (ở cuối danh sách)
+    if (_records.length > 5) {
+      _records.removeLast();
     }
     
-    // Báo cho bất kỳ widget nào đang lắng nghe rằng dữ liệu đã thay đổi
     notifyListeners();
   }
 

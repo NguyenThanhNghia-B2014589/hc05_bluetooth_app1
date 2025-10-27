@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../data/weighing_data.dart';
+import '../controllers/weighing_station_controller.dart';
 
 class WeighingTable extends StatelessWidget {
   final List<WeighingRecord> records;
 
-  const WeighingTable({super.key, required this.records});
+  final WeighingType weighingType;
+
+  const WeighingTable({
+    super.key, 
+    required this.records,
+    required this.weighingType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +33,11 @@ class WeighingTable extends StatelessWidget {
       child: Padding(padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 4.0), 
       child: Center(
         child: Text(text, style: cellStyle, textAlign: TextAlign.center))));
+    
+    final String khoiLuongMeHeader = 
+      (weighingType == WeighingType.nhap) 
+      ? 'Khối Lượng Mẻ (kg)' 
+      : 'Khối Lượng Tồn (kg)';
 
     return Card(
       elevation: 4,
@@ -43,7 +55,7 @@ class WeighingTable extends StatelessWidget {
                   headerCell('Số Lô', 2), verticalDivider(),
                   headerCell('Số Máy', 2), verticalDivider(),
                   headerCell('Người Thao Tác', 3), verticalDivider(),
-                  headerCell('Khối Lượng Mẻ (kg)', 3), verticalDivider(),
+                  headerCell(khoiLuongMeHeader, 3), verticalDivider(),
                   headerCell('Khối Lượng Đã Cân (kg)', 3), verticalDivider(),
                   headerCell('Thời Gian Cân', 3),
                 ],
