@@ -2,37 +2,31 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 // Dữ liệu mẫu
-class _ChartData {
+class ChartData {
   final int hour;
   final double nhap;
   final double xuat;
-  const _ChartData(this.hour, this.nhap, this.xuat);
+  const ChartData(this.hour, this.nhap, this.xuat);
 }
 
 class HourlyWeighingChart extends StatelessWidget {
-  const HourlyWeighingChart({super.key});
-
+  const HourlyWeighingChart({super.key, required this.data});
   // Màu sắc
   static const Color colorNhap = Color(0xFF81C784); // Xanh lá
   static const Color colorXuat = Color(0xFFE57373); // Đỏ
-
-  // Dữ liệu mock-up (giống trong hình)
-  final List<_ChartData> _data = const [
-    _ChartData(7, 1800, 0),
-    _ChartData(8, 1500, 0),
-    _ChartData(9, 750, 550), // 750 + 550 = 1300
-    _ChartData(10, 1800, 0),
-    _ChartData(11, 0, 0), // Giờ nghỉ
-    _ChartData(12, 500, 500), // 500 + 500 = 1000
-    _ChartData(13, 550, 550), // 550 + 550 = 1100
-    _ChartData(14, 0, 0), // Giờ nghỉ
-    _ChartData(15, 1400, 0),
-    _ChartData(16, 0, 0), // Giờ nghỉ
-    _ChartData(17, 900, 500), // 900 + 500 = 1400
-  ];
+  final List<ChartData> data;
   
   @override
   Widget build(BuildContext context) {
+    // --- 5. TÍNH TOÁN maxY ĐỘNG ---
+    double maxY = 1800; // Mặc định
+    if (data.isNotEmpty) {
+      // Tìm giá trị tổng lớn nhất
+      final maxVal = data.map((d) => d.nhap + d.xuat).reduce((a, b) => a > b ? a : b);
+      // Làm tròn lên 450 gần nhất (giống trục Y)
+      maxY = (maxVal / 450).ceil() * 450;
+      if (maxY == 0) maxY = 1800; // Tránh trường hợp 0
+    }
     return Column(
       children: [
         Expanded(
@@ -53,11 +47,14 @@ class HourlyWeighingChart extends StatelessWidget {
                     showTitles: true,
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) {
-                      if (value == 0) return _bottomTitle('0', );
-                      if (value == 450) return _bottomTitle('450', );
-                      if (value == 900) return _bottomTitle('900', );
-                      if (value == 1350) return _bottomTitle('1350', );
-                      if (value == 1800) return _bottomTitle('1800',);
+                      if (value == 0) return _bottomTitle('0', meta);
+                      if (value == 100) return _bottomTitle('100', meta);
+                      if (value == 200) return _bottomTitle('200', meta);
+                      if (value == 300) return _bottomTitle('300', meta);
+                      if (value == 400) return _bottomTitle('400', meta);
+                      if (value == 900) return _bottomTitle('900', meta);
+                      if (value == 1350) return _bottomTitle('1350', meta);
+                      if (value == 1800) return _bottomTitle('1800',meta);
                       return const Text('');
                     },
                   ),
@@ -70,8 +67,11 @@ class HourlyWeighingChart extends StatelessWidget {
                     reservedSize: 30,
                     getTitlesWidget: (value, meta) {
                       // value ở đây là index (0, 1, 2...)
-                      final int hour = _data[value.toInt()].hour;
-                      return _bottomTitle('${hour.toString().padLeft(2, '0')}:00', );
+                      if (value.toInt() >= 0 && value.toInt() < data.length) {
+                        final int hour = data[value.toInt()].hour;
+                        return _bottomTitle('${hour.toString().padLeft(2, '0')}:00', meta);
+                      }
+                      return const Text('');
                     },
                   ),
                 ),
@@ -89,12 +89,69 @@ class HourlyWeighingChart extends StatelessWidget {
               
               // 4. Bỏ viền
               borderData: FlBorderData(show: false),
-              
+              // 5. Cài đặt tương tác
+              barTouchData: BarTouchData(
+                // Kích hoạt tooltip
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipPadding: const EdgeInsets.all(8),
+                  tooltipMargin: 8,
+                  tooltipBorderRadius: BorderRadius.circular(8),
+                  // Hàm tùy chỉnh nội dung tooltip
+                  getTooltipItem: (
+                    BarChartGroupData group,
+                    int groupIndex,
+                    BarChartRodData rod,
+                    int rodIndex,
+                  ) {
+                    String title;
+                    double value;
+                    
+                    // Lấy dữ liệu từ data list
+                    final chartData = data[groupIndex];
+
+                    // Kiểm tra vị trí click dựa trên rodIndex
+                    if (rodIndex == 0) {
+                      // Click vào phần Nhập (xanh lá)
+                      title = 'Khối lượng nhập:';
+                      value = chartData.nhap;
+                    } else {
+                      // Click vào phần Xuất (đỏ)
+                      title = 'Khối lượng xuất:';
+                      value = chartData.xuat;
+                    }
+                    
+                    // Ẩn tooltip nếu bấm vào phần có giá trị = 0
+                    if (value == 0) {
+                      return null;
+                    }
+
+                    return BarTooltipItem(
+                      '$title\n',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: value.toStringAsFixed(4), 
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
               // 5. Dữ liệu cột
               barGroups: _generateBarGroups(),
 
               // 6. Giới hạn Y
-              maxY: 1800,
+              maxY: maxY,
             ),
           ),
         ),
@@ -107,8 +164,8 @@ class HourlyWeighingChart extends StatelessWidget {
 
   // Hàm tạo các cột dữ liệu
   List<BarChartGroupData> _generateBarGroups() {
-    return List.generate(_data.length, (index) {
-      final item = _data[index];
+    return List.generate(data.length, (index) {
+      final item = data[index];
       
       // Tính tổng (để làm phần nền)
       final total = item.nhap + item.xuat;
@@ -162,9 +219,9 @@ class HourlyWeighingChart extends StatelessWidget {
   }
 
   // Widget helper cho các tiêu đề (Trục X, Y)
-  Widget _bottomTitle(String text) { // <-- 1. Thêm 'TitleMeta meta'
+  Widget _bottomTitle(String text, TitleMeta meta) {
     return SideTitleWidget(
-      axisSide: AxisSide.bottom, // <-- 3. XÓA DÒNG NÀY
+      meta : meta,
       child: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }
