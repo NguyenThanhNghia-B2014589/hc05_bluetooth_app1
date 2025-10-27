@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     iconPath: 'lib/assets/images/dashboard.png',
                     label: 'Dash Board',
                     onPressed: () {
-                      // TODO: Tạo trang Dashboard rồi liên kết sau
+                      Navigator.of(context).pushNamed('/dashboard');
                     },
                   ),
                   _buildMenuButton(

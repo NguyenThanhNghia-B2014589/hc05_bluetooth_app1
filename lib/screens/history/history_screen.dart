@@ -110,8 +110,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         thoiGianCan: parseMockDate(data['thoiGianCan']!),
         khoiLuongMe: data['khoiLuongMe']!,
         khoiLuongSauCan: data['khoiLuongSauCan']!,
+        loai: data['loai'],
       );
     }).toList();
+    _allRecords.sort((a, b) {
+      // Sắp xếp giảm dần (descending) theo thời gian cân
+      // (Giả sử thoiGianCan không bao giờ null trong mock lịch sử)
+      return b.thoiGianCan!.compareTo(a.thoiGianCan!);
+    });
     
     _filteredRecords = _allRecords; // Ban đầu hiển thị tất cả
   }

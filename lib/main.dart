@@ -4,6 +4,7 @@ import 'screens/weighing_station/weighing_station_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/history/history_screen.dart';
+import 'screens/dashboard/dashboard_screen.dart';
 
 
 void main() {
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         '/scan': (context) => const ScanScreen(),
         '/weighing_station': (context) => const WeighingStationScreen(),
         '/history': (context) => const HistoryScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
       },
     );
   }
