@@ -79,7 +79,8 @@ class WeighingStationController with ChangeNotifier {
       
       if (data != null) {
         // Lấy khối lượng tồn (khoiLuongSauCan) làm khối lượng tiêu chuẩn
-        standardWeightValue = data['khoiLuongSauCan']; 
+        //standardWeightValue = data['khoiLuongSauCan']; // Tạm thời chưa dùng
+        standardWeightValue = data['khoiLuongMe'];
       }
     }
 
@@ -114,7 +115,7 @@ class WeighingStationController with ChangeNotifier {
     );
     
     _records.insert(0, newRecord);
-    if (_records.length > 5) {
+    if (_records.length > 4) {
       _records.removeLast();
     }
     

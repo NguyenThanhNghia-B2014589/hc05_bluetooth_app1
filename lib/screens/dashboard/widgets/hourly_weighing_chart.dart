@@ -134,7 +134,7 @@ class HourlyWeighingChart extends StatelessWidget {
                       ),
                       children: <TextSpan>[
                         TextSpan(
-                          text: value.toStringAsFixed(4), 
+                          text: value.toStringAsFixed(3), 
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,

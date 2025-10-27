@@ -4,6 +4,7 @@ import '../../services/bluetooth_service.dart';
 import '../../widgets/main_app_bar.dart';
 import 'widgets/hourly_weighing_chart.dart';
 import '../../data/weighing_data.dart';
+import 'widgets/inventory_pie_chart.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,6 +21,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<ChartData> _chartData = []; // Dữ liệu đã xử lý cho chart
 
   DateTime _selectedDate = DateTime.now();
+
+  double _totalNhap = 0.0;
+  double _totalXuat = 0.0;
   
   @override
   void initState() {
@@ -66,6 +70,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         loai: data['loai'],
       );
     }).toList();
+    double dayNhap = 0.0;
+    double dayXuat = 0.0;
+
+    for (final record in _allRecords) { // Duyệt qua TẤT CẢ record
+      final amount = record.khoiLuongDaCan ?? 0.0;
+      if (record.loai == 'nhap') {
+        dayNhap += amount;
+      } else if (record.loai == 'xuat') {
+        dayXuat += amount;
+      }
+    }
+    
+    // 2. Cập nhật state cho Biểu đồ tròn (chỉ 1 lần)
+    setState(() {
+      _totalNhap = dayNhap;
+      _totalXuat = dayXuat;
+    });
   }
 
   void _processDataForChart(DateTime selectedDate) {
@@ -84,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
              d.day == selectedDate.day;
     }).toList();
 
-    // 3. Tổng hợp khối lượng
+    // 3. Tổng hợp khối lượng (chỉ cho biểu đồ cột)
     for (final record in recordsForDay) {
       int hour = record.thoiGianCan!.hour;
       if (hourlyData.containsKey(hour)) {
@@ -98,11 +119,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
     
-    // 4. Chuyển Map thành List<ChartData> và cập nhật UI
+    // 4. Cập nhật UI (chỉ cho biểu đồ cột)
     setState(() {
       _chartData = hourlyData.entries.map((entry) {
-        // entry.key = giờ (7, 8, 9...)
-        // entry.value = {'nhap': 1800, 'xuat': 0}
         return ChartData(entry.key, entry.value['nhap']!, entry.value['xuat']!);
       }).toList();
     });
@@ -143,15 +162,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
             
             // 4. Biểu đồ
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // CỘT 1: BIỂU ĐỒ CỘT (Đã có)
+                Expanded(
+                  flex: 3, // Biểu đồ cột chiếm 3 phần
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: HourlyWeighingChart(data: _chartData),
+                  ),
                 ),
-                child: HourlyWeighingChart(data: _chartData), // <-- Truyền data vào
-              ),
+
+                const SizedBox(width: 24), // Khoảng cách
+
+                // CỘT 2: BIỂU ĐỒ TRÒN (Mới)
+                Expanded(
+                  flex: 2, // Biểu đồ tròn chiếm 2 phần
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    // Truyền 2 giá trị tổng vào
+                    child: InventoryPieChart(
+                      totalNhap: _totalNhap, 
+                      totalXuat: _totalXuat,
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
           ],
         ),
       ),
