@@ -23,10 +23,10 @@ class BluetoothStatusAction extends StatelessWidget {
               Text(
                 device.name, // Lỗi "getter 'name' isn't defined" sẽ hết sau khi bạn import
                 style: const TextStyle(
-                    color: Colors.black87, fontWeight: FontWeight.w500),
+                    color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 20),
               ),
               IconButton(
-                icon: const Icon(Icons.link),
+                icon: const Icon(Icons.link, size: 30.0,),
                 color: Colors.green.shade700,
                 tooltip: 'Ngắt kết nối',
                 onPressed: () {
@@ -46,9 +46,9 @@ class BluetoothStatusAction extends StatelessWidget {
             children: [
               const Text('Chưa kết nối',
                   style: TextStyle(
-                      color: Colors.black87, fontWeight: FontWeight.w500)),
+                      color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 20)),
               IconButton(
-                icon: const Icon(Icons.link_off),
+                icon: const Icon(Icons.link_off,size: 30.0,),
                 color: Colors.red,
                 tooltip: 'Kết nối lại',
                 onPressed: () {

@@ -20,10 +20,61 @@ class _HistoryScreenState extends State<HistoryScreen> {
   late List<WeighingRecord> _allRecords; // Danh sách đầy đủ
   List<WeighingRecord> _filteredRecords = []; // Danh sách đã lọc
 
+  String _selectedFilterType = 'Tên phôi keo'; // Giữ state cho Dropdown
+  DateTime? _selectedDate; // Giữ state cho Date Picker
+  String _searchText = ''; // Giữ state cho Search Text
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    _searchController.addListener(() {
+      setState(() {
+        _searchText = _searchController.text;
+      });
+      _runFilter();
+    });
+  }
+
+  bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  void _runFilter() {
+    List<WeighingRecord> results = _allRecords;
+
+    // 1. Lọc theo Ngày (nếu có)
+    if (_selectedDate != null) {
+      results = results
+          .where((record) => _isSameDay(record.thoiGianCan, _selectedDate))
+          .toList();
+    }
+
+    // 2. Lọc theo Từ khóa tìm kiếm (nếu có)
+    if (_searchText.isNotEmpty) {
+      String query = _searchText.toLowerCase();
+      
+      results = results.where((record) {
+        if (_selectedFilterType == 'Tên phôi keo') {
+          return record.tenPhoiKeo.toLowerCase().contains(query);
+        } else if (_selectedFilterType == 'Mã code') {
+          return record.maCode.toLowerCase().contains(query);
+        }
+        // (Nếu bạn muốn tìm kiếm chung, bỏ if/else ở trên và dùng code này)
+        // final tenPhoi = record.tenPhoiKeo.toLowerCase();
+        // final maCode = record.maCode.toLowerCase();
+        // final soLo = record.soLo.toLowerCase();
+        // return tenPhoi.contains(query) || maCode.contains(query) || soLo.contains(query);
+        
+        return false;
+      }).toList();
+    }
+
+    // Cập nhật UI
+    setState(() {
+      _filteredRecords = results;
+    });
   }
 
   // Chuyển đổi mock map của bạn thành List<WeighingRecord>
@@ -72,14 +123,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
-  // TODO: Thêm logic lọc (search, filter) ở đây
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. Tái sử dụng MainAppBar
       appBar: MainAppBar(
-        title: 'LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ',
+        title: 'LƯU TRÌNH CÂN CAO SU XƯỞNG ĐẾ',
         bluetoothService: _bluetoothService,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -90,24 +139,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
       
       // 2. Body
       body: Container(
-        color: const Color(0xFFE3F2FD), // Màu nền xanh nhạt
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 3. Title
-            const Text(
-              'Lịch sử cân',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween, // Đẩy 2 item ra 2 bên
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 1. Title
+                const Text(
+                  'Lịch sử cân',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                
+                const SizedBox(width: 24), // Khoảng cách giữa Title và Filter
+                
+                // 2. Filter Bar (bọc trong Expanded)
+                _buildFilterBar(),
+              ],
             ),
-            const SizedBox(height: 16),
-            
-            // 4. Thanh Filter/Search
-            _buildFilterBar(),
-            
-            const SizedBox(height: 16),
-            
-            // 5. Bảng Dữ Liệu
+            const SizedBox(height: 24),
+            // 3. History Table
             Expanded(
               child: HistoryTable(records: _filteredRecords),
             ),
@@ -126,61 +179,120 @@ class _HistoryScreenState extends State<HistoryScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Filter (Tạm thời là Text)
+          // 1. Dropdown Loại Filter
           Container(
-             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
             decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8)
-            ),
+                color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: 'Tên phôi keo',
+                value: _selectedFilterType, // <-- Dùng state
                 items: const [
-                  DropdownMenuItem(value: 'Tên phôi keo', child: Text('Tên phôi keo')),
-                  DropdownMenuItem(value: 'Mã code', child: Text('Mã code')),
+                  DropdownMenuItem(
+                      value: 'Tên phôi keo', child: Text('Tên phôi keo')),
+                  DropdownMenuItem(
+                      value: 'Mã code', child: Text('Mã code')),
                 ],
-                onChanged: (v) {},
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedFilterType = value;
+                    });
+                    _runFilter(); // <-- Chạy lọc
+                  }
+                },
               ),
             ),
           ),
           const SizedBox(width: 16),
-          // Date Picker (Tạm thời là TextField)
+          
+          // 2. Date Picker
           SizedBox(
             width: 150,
             child: TextField(
               controller: _dateController,
-              decoration: const InputDecoration(
+              readOnly: true, // Không cho gõ
+              decoration: InputDecoration(
                 hintText: 'dd/mm/yyyy',
-                suffixIcon: Icon(Icons.calendar_today),
-                border: InputBorder.none,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.0),
+                ),
+                
+                // 3. Viền khi bấm vào (màu đen, dày hơn)
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
+                ),
+
+                // 4. Căn chỉnh lại padding bên trong ô
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+                // Thêm icon Xóa và Lịch
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today, size: 20),
+                      onPressed: () async { // <-- Logic chọn ngày
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDate = picked; // <-- Lưu state
+                            _dateController.text =
+                                DateFormat('dd/MM/yyyy').format(picked);
+                          });
+                          _runFilter(); // <-- Chạy lọc
+                        }
+                      },
+                    ),
+                    // Chỉ hiện nút Xóa khi đã chọn ngày
+                    if (_selectedDate != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () { // <-- Logic xóa ngày
+                          setState(() {
+                            _selectedDate = null; // <-- Xóa state
+                            _dateController.clear();
+                          });
+                          _runFilter(); // <-- Chạy lọc
+                        },
+                      ),
+                  ],
+                ),
               ),
-              onTap: () async {
-                // Logic hiện Date Picker
-                DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                );
-                if (picked != null) {
-                  _dateController.text = DateFormat('dd/MM/yyyy').format(picked);
-                }
-              },
             ),
           ),
           const VerticalDivider(),
-          // Search Field
-          Expanded(
+          
+          // 3. Search Field
+          SizedBox(
+            width: 250,
             child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Tìm kiếm theo mã, tên, lô...',
+              controller: _searchController, // Listener đã được thêm trong initState
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm...',
                 prefixIcon: Icon(Icons.search),
-                border: InputBorder.none,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.0),
+                ),
+                
+                // 3. Viền khi bấm vào (màu đen, dày hơn)
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
+                ),
+
+                // 4. Căn chỉnh lại padding bên trong ô
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
               ),
-              // onChanged: (value) => _runFilter(value), // Thêm logic filter
             ),
           ),
         ],

@@ -14,7 +14,7 @@ class HistoryTable extends StatelessWidget {
     Widget headerCell(String title, int flex) => Expanded(
         flex: flex,
         child: Container(
-          color: const Color(0xFFB3E5FC), // Màu xanh nhạt header
+          color: const Color(0xFF40B9FF), // Màu xanh nhạt header
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Center(
               child: Text(title, style: headerStyle, textAlign: TextAlign.center)),
@@ -27,6 +27,7 @@ class HistoryTable extends StatelessWidget {
             child: Center(
                 child: Text(text, style: cellStyle, textAlign: TextAlign.center))));
 
+    Widget verticalDivider() => Container(width: 1, color: Colors.white.withValues(alpha: 1));
     // Định dạng ngày giờ
     String formatDateTime(DateTime? dt) {
       if (dt == null) return '---';
@@ -45,14 +46,14 @@ class HistoryTable extends StatelessWidget {
           IntrinsicHeight(
             child: Row(
               children: [
-                headerCell('Mã Code', 2),
-                headerCell('Tên Phôi Keo', 3),
-                headerCell('Số Lô', 2),
-                headerCell('Số Máy', 2),
-                headerCell('Người Thao Tác', 3),
-                headerCell('Thời Gian Cân', 3),
-                headerCell('Khối Lượng Mẻ (kg)', 2),
-                headerCell('Khối Lượng Cân (kg)', 2),
+                headerCell('Mã Code', 2), verticalDivider(),
+                headerCell('Tên Phôi Keo', 3), verticalDivider(),
+                headerCell('Số Lô', 2), verticalDivider(),
+                headerCell('Số Máy', 2), verticalDivider(),
+                headerCell('Người Thao Tác', 3), verticalDivider(),
+                headerCell('Thời Gian Cân', 3), verticalDivider(),
+                headerCell('Khối Lượng Mẻ (kg)', 3), verticalDivider(),
+                headerCell('Khối Lượng Cân (kg)', 3),
               ],
             ),
           ),
@@ -76,8 +77,8 @@ class HistoryTable extends StatelessWidget {
                           dataCell(record.soMay, 2),
                           dataCell(record.nguoiThaoTac, 3),
                           dataCell(formatDateTime(record.thoiGianCan), 3),
-                          dataCell(record.khoiLuongMe.toStringAsFixed(3), 2),
-                          dataCell(record.khoiLuongSauCan?.toStringAsFixed(3) ?? '---', 2),
+                          dataCell(record.khoiLuongMe.toStringAsFixed(3), 3),
+                          dataCell(record.khoiLuongSauCan?.toStringAsFixed(3) ?? '---', 3),
                         ],
                       ),
                     ),

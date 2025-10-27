@@ -39,13 +39,13 @@ class WeighingTable extends StatelessWidget {
             child: IntrinsicHeight(
               child: Row(
                 children: [
-                  headerCell('Tên Phôi Keo', 2), verticalDivider(),
+                  headerCell('Tên Phôi Keo', 3), verticalDivider(),
                   headerCell('Số Lô', 2), verticalDivider(),
                   headerCell('Số Máy', 2), verticalDivider(),
-                  headerCell('Người Thao Tác', 2), verticalDivider(),
-                  headerCell('Khối Lượng Mẻ (kg)', 2), verticalDivider(),
-                  headerCell('Khối Lượng Đã Cân (kg)', 2), verticalDivider(),
-                  headerCell('Thời Gian Cân', 2),
+                  headerCell('Người Thao Tác', 3), verticalDivider(),
+                  headerCell('Khối Lượng Mẻ (kg)', 3), verticalDivider(),
+                  headerCell('Khối Lượng Đã Cân (kg)', 3), verticalDivider(),
+                  headerCell('Thời Gian Cân', 3),
                 ],
               ),
             ),
@@ -77,14 +77,14 @@ class WeighingTable extends StatelessWidget {
                   child: IntrinsicHeight(
                     child: Row(
                       children: [
-                        dataCell(record.tenPhoiKeo, 2),
+                        dataCell(record.tenPhoiKeo, 3),
                         dataCell(record.soLo, 2),
                         dataCell(record.soMay, 2),
-                        dataCell(record.nguoiThaoTac, 2),
-                        dataCell(record.khoiLuongMe.toStringAsFixed(3), 2),
+                        dataCell(record.nguoiThaoTac, 3),
+                        dataCell(record.khoiLuongMe.toStringAsFixed(3), 3),
                         dataCell(
                           // Nếu chưa cân (null) thì hiển thị '---'
-                          record.khoiLuongDaCan?.toStringAsFixed(3) ?? '---', 2),
+                          record.khoiLuongDaCan?.toStringAsFixed(3) ?? '---', 3),
                         Builder(
                           builder: (context) {
                             String thoiGianText;
@@ -100,7 +100,7 @@ class WeighingTable extends StatelessWidget {
                               final min = dt.minute.toString().padLeft(2, '0');
                               thoiGianText = '$d/$m/$y  $h:$min';
                             }
-                            return dataCell(thoiGianText, 2);
+                            return dataCell(thoiGianText, 3);
                           }
                         ),
                       ],

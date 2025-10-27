@@ -49,7 +49,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             }
           },
           // Icon hiển thị trên AppBar
-          icon: const Icon(Icons.person, color: Colors.black54), 
+          icon: const Icon(Icons.person, color: Colors.black54, size: 30.0,), 
           tooltip: 'Tuy chọn',
           // Hàm này xây dựng các mục trong menu
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
