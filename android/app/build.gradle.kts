@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.hc05_bluetooth_app"
-        minSdkVersion(23)
+        minSdkVersion(24)
         targetSdkVersion(29)
         versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName

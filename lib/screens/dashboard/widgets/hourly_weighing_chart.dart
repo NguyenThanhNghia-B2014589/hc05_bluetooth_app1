@@ -53,11 +53,11 @@ class HourlyWeighingChart extends StatelessWidget {
                     showTitles: true,
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) {
-                      if (value == 0) return _bottomTitle('0', meta);
-                      if (value == 450) return _bottomTitle('450', meta);
-                      if (value == 900) return _bottomTitle('900', meta);
-                      if (value == 1350) return _bottomTitle('1350', meta);
-                      if (value == 1800) return _bottomTitle('1800', meta);
+                      if (value == 0) return _bottomTitle('0', );
+                      if (value == 450) return _bottomTitle('450', );
+                      if (value == 900) return _bottomTitle('900', );
+                      if (value == 1350) return _bottomTitle('1350', );
+                      if (value == 1800) return _bottomTitle('1800',);
                       return const Text('');
                     },
                   ),
@@ -71,7 +71,7 @@ class HourlyWeighingChart extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       // value ở đây là index (0, 1, 2...)
                       final int hour = _data[value.toInt()].hour;
-                      return _bottomTitle('${hour.toString().padLeft(2, '0')}:00', meta);
+                      return _bottomTitle('${hour.toString().padLeft(2, '0')}:00', );
                     },
                   ),
                 ),
@@ -162,10 +162,9 @@ class HourlyWeighingChart extends StatelessWidget {
   }
 
   // Widget helper cho các tiêu đề (Trục X, Y)
-  Widget _bottomTitle(String text, TitleMeta meta) { // <-- 1. Thêm 'TitleMeta meta'
+  Widget _bottomTitle(String text) { // <-- 1. Thêm 'TitleMeta meta'
     return SideTitleWidget(
-      meta: meta, // <-- 2. Thêm 'meta: meta'
-      // axisSide: AxisSide.bottom, // <-- 3. XÓA DÒNG NÀY
+      axisSide: AxisSide.bottom, // <-- 3. XÓA DÒNG NÀY
       child: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }

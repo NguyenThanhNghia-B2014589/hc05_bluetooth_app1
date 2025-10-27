@@ -37,7 +37,7 @@ class WeighingTable extends StatelessWidget {
     final String khoiLuongMeHeader = 
       (weighingType == WeighingType.nhap) 
       ? 'Khối Lượng Mẻ (kg)' 
-      : 'Khối Lượng Tồn (kg)';
+      : 'Khối Lượng Mẻ (kg)';
 
     return Card(
       elevation: 4,
