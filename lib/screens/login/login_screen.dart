@@ -10,6 +10,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _soTheController = TextEditingController();
   final _matKhauController = TextEditingController();
+  String _selectedFactory = 'LHG';
 
   void _handleLogin() {
     // Tạm thời, chúng ta sẽ không kiểm tra logic vội
@@ -132,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 32),
           // --- Số thẻ ---
-          Text('Số thẻ', style: TextStyle(color: Colors.grey[600])),
+          Text('Số thẻ', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold,)),
           const SizedBox(height: 8),
           TextField(
             controller: _soTheController,
@@ -145,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
           // --- Mật khẩu ---
-          Text('Mật khẩu', style: TextStyle(color: Colors.grey[600])),
+          Text('Mật khẩu', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold,)),
           const SizedBox(height: 8),
           TextField(
             controller: _matKhauController,
@@ -155,6 +156,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(8.0),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+          ),
+          const SizedBox(height: 32),
+          // --- Chọn nhà máy ---
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: Colors.grey.shade400),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedFactory,
+                isExpanded: true,
+                icon: const Icon(Icons.factory_outlined), // Thêm icon
+                items: ['LHG', 'LYV', 'LVL', 'LAZ', 'LZS', 'LYM']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedFactory = newValue;
+                    });
+                  }
+                },
+              ),
             ),
           ),
           const SizedBox(height: 32),

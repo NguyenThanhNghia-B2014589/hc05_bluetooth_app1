@@ -50,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: MainAppBar(
-        title: 'LƯU TRÌNH CÂN KEO XƯỞNG ĐẾ',
+        title: 'LƯU TRÌNH CÂN CAO SU XƯỞNG ĐẾ',
         bluetoothService: _bluetoothService,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -63,30 +63,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           animation: _controller,
           builder: (context, child) {
             return Container(
-              color: const Color(0xFFE3F2FD),
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        'Khối Lượng Cân Theo Ca',
+                        'Dashboard - Tổng Quan',
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      DatePickerInput(
-                        selectedDate: _controller.selectedDate, // <-- Get from controller
-                        controller: _dateController, // Use the local controller for text field
-                        onDateSelected: (newDate) {
-                          _controller.updateSelectedDate(newDate); // <-- Call controller method
-                        },
-                        onDateCleared: () { // Reset to today
-                          _controller.updateSelectedDate(DateTime.now()); // <-- Call controller method
-                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,8 +89,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            // --- 6. Get data from controller ---
-                            child: HourlyWeighingChart(data: _controller.chartData),
+                            child: Column(
+                              children: [
+                                // Thêm phần header với DatePicker
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Khối Lượng Cân Theo Ca',
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                    ),
+                                    DatePickerInput(
+                                      selectedDate: _controller.selectedDate,
+                                      controller: _dateController,
+                                      onDateSelected: (newDate) {
+                                        _controller.updateSelectedDate(newDate);
+                                      },
+                                      onDateCleared: () {
+                                        _controller.updateSelectedDate(DateTime.now());
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // Chart sẽ nằm trong Expanded
+                                Expanded(
+                                  child: HourlyWeighingChart(data: _controller.chartData),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: 24),

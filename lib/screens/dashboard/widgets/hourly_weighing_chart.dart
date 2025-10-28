@@ -19,23 +19,19 @@ class HourlyWeighingChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // --- 5. TÍNH TOÁN maxY ĐỘNG ---
-    double maxY = 1800; // Mặc định
+    double maxY = 2000; // Mặc định
     if (data.isNotEmpty) {
-      // Tìm giá trị  lớn nhất
-      final maxVal = data.map((d) => d.nhap + d.xuat).reduce((a, b) => a > b ? a : b);
-      // Làm tròn lên 450 gần nhất (giống trục Y)
-      maxY = (maxVal / 450).ceil() * 450;
-      if (maxY == 0) maxY = 1800; // Tránh trường hợp 0
+      // Tìm giá trị lớn nhất giữa nhập và xuất
+      final maxNhap = data.map((d) => d.nhap).reduce((a, b) => a > b ? a : b);
+      final maxXuat = data.map((d) => d.xuat).reduce((a, b) => a > b ? a : b);
+      final maxVal = maxNhap > maxXuat ? maxNhap : maxXuat;
+      
+      // Làm tròn lên 100 gần nhất
+      maxY = (maxVal / 100).ceil() * 100;
+      if (maxY == 0) maxY = 2000; // Tránh trường hợp 0
     }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-         // 1. Tiêu đề
-        const Text(
-          'Khối Lượng Cân Theo Ca',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        
         Expanded(
           child: BarChart(
             BarChartData(
@@ -55,11 +51,11 @@ class HourlyWeighingChart extends StatelessWidget {
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) {
                       if (value == 0) return _bottomTitle('0', meta);
-                      if (value == 100) return _bottomTitle('100', meta);
                       if (value == 200) return _bottomTitle('200', meta);
-                      if (value == 300) return _bottomTitle('300', meta);
                       if (value == 400) return _bottomTitle('400', meta);
-                      if (value == 900) return _bottomTitle('900', meta);
+                      if (value == 600) return _bottomTitle('600', meta); 
+                      if (value == 800) return _bottomTitle('800', meta);
+                      if (value == 1000) return _bottomTitle('1000', meta);
                       if (value == 1200) return _bottomTitle('1200', meta);
                       if (value == 1800) return _bottomTitle('1800',meta);
                       return const Text('');
@@ -91,7 +87,6 @@ class HourlyWeighingChart extends StatelessWidget {
                   strokeWidth: 1,
                 ),
               ),
-              
               // 4. Bỏ viền
               borderData: FlBorderData(show: false),
               // 5. Cài đặt tương tác
@@ -100,7 +95,7 @@ class HourlyWeighingChart extends StatelessWidget {
                 // 1. TẮT TƯƠNG TÁC (KHÔNG CẦN CHẠM/HOVER)
                 enabled: false, 
                 touchTooltipData: BarTouchTooltipData(
-                  tooltipPadding: EdgeInsets.zero,
+                  tooltipPadding: EdgeInsets.all(2),
                   tooltipMargin: 5, // Khoảng cách 5px phía trên cột
                   //tooltipBorderRadius: BorderRadius.zero,
                   tooltipBorder: BorderSide.none, // BỎ BORDER

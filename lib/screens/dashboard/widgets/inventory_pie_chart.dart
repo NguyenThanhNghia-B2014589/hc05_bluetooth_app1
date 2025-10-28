@@ -90,7 +90,7 @@ class InventoryPieChart extends StatelessWidget {
         const SizedBox(height: 24),
         
         // 3. Chú thích (Legend)
-        _buildLegendItem(colorNhap, 'Khối lượng cân xuất (${totalXuat.toStringAsFixed(3)})'),
+        _buildLegendItem(colorNhap, 'Khối lượng cân xuất (${totalXuat.toStringAsFixed(2)})'),
         const SizedBox(height: 8),
         _buildLegendItem(colorTon, 'Khối lượng tồn kho (${tonKho.toStringAsFixed(3)})'),
       ],

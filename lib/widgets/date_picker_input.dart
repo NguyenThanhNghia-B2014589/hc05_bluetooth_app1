@@ -16,7 +16,7 @@ class DatePickerInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 220, // 4. Sửa width
       child: TextField(
         controller: controller,

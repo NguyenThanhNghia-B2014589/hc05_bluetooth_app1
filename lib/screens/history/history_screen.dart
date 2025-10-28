@@ -28,7 +28,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void dispose() {
     // --- HỦY CONTROLLER ---
-    _controller.dispose();;
+    _controller.dispose();
     super.dispose();
   }
 
@@ -46,7 +46,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       
       body: Container(
-        color: const Color(0xFFE3F2FD),
         padding: const EdgeInsets.all(24.0),
         // --- DÙNG ANIMATED BUILDER ĐỂ LẮNG NGHE ---
         child: AnimatedBuilder(
