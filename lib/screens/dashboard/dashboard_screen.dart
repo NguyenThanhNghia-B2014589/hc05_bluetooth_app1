@@ -5,6 +5,7 @@ import '../../widgets/main_app_bar.dart';
 import 'widgets/hourly_weighing_chart.dart';
 import '../../data/weighing_data.dart';
 import 'widgets/inventory_pie_chart.dart';
+import '../../widgets/date_picker_input.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -90,42 +91,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _processDataForChart(DateTime selectedDate) {
-    // 1. Khởi tạo map 0 cho các giờ (7h-17h)
-    Map<int, Map<String, double>> hourlyData = {};
-    for (int i = 7; i <= 17; i++) {
-      hourlyData[i] = {'nhap': 0.0, 'xuat': 0.0};
-    }
 
-    // 2. Lọc các record theo ngày đã chọn
-    final recordsForDay = _allRecords.where((record) {
-      if (record.thoiGianCan == null) return false;
-      final d = record.thoiGianCan!;
-      return d.year == selectedDate.year &&
-             d.month == selectedDate.month &&
-             d.day == selectedDate.day;
-    }).toList();
+  // 1. Định nghĩa 3 ca
+  // (selectedDate ví dụ là 16/08)
+  final ca1Start = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 6, 0); // 06:00 16/08
+  final ca2Start = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 14, 0); // 14:00 16/08
+  final ca3Start = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 22, 0); // 22:00 16/08
+  final endOfDay = ca1Start.add(const Duration(days: 1)); // 06:00 17/08
 
-    // 3. Tổng hợp khối lượng (chỉ cho biểu đồ cột)
-    for (final record in recordsForDay) {
-      int hour = record.thoiGianCan!.hour;
-      if (hourlyData.containsKey(hour)) {
-        final amount = record.khoiLuongDaCan ?? 0.0;
-        
-        if (record.loai == 'nhap') {
-          hourlyData[hour]!['nhap'] = hourlyData[hour]!['nhap']! + amount;
-        } else if (record.loai == 'xuat') {
-          hourlyData[hour]!['xuat'] = hourlyData[hour]!['xuat']! + amount;
-        }
-      }
+  // 2. Khởi tạo map cho 3 ca
+  Map<String, Map<String, double>> shiftData = {
+    'Ca 1': {'nhap': 0.0, 'xuat': 0.0},
+    'Ca 2': {'nhap': 0.0, 'xuat': 0.0},
+    'Ca 3': {'nhap': 0.0, 'xuat': 0.0},
+  };
+
+  // 3. Lọc các record trong 24h (từ 6h hôm nay đến 6h hôm sau)
+  final recordsForDay = _allRecords.where((record) {
+    if (record.thoiGianCan == null) return false;
+    final thoiGian = record.thoiGianCan!;
+
+    // Nằm trong khoảng (>= 06:00 hôm nay) VÀ (< 06:00 hôm sau)
+    return (thoiGian.isAtSameMomentAs(ca1Start) || thoiGian.isAfter(ca1Start)) &&
+           thoiGian.isBefore(endOfDay);
+  }).toList();
+
+  // 4. Tổng hợp khối lượng theo ca
+  for (final record in recordsForDay) {
+    final thoiGian = record.thoiGianCan!;
+    final amount = record.khoiLuongDaCan ?? 0.0;
+    final type = (record.loai == 'nhap') ? 'nhap' : 'xuat';
+
+    // So sánh thời gian để xếp vào ca
+    if (thoiGian.isBefore(ca2Start)) {
+      // Từ 06:00 -> 13:59
+      shiftData['Ca 1']![type] = shiftData['Ca 1']![type]! + amount;
+    } else if (thoiGian.isBefore(ca3Start)) {
+      // Từ 14:00 -> 21:59
+      shiftData['Ca 2']![type] = shiftData['Ca 2']![type]! + amount;
+    } else {
+      // Từ 22:00 -> 05:59 (hôm sau)
+      shiftData['Ca 3']![type] = shiftData['Ca 3']![type]! + amount;
     }
-    
-    // 4. Cập nhật UI (chỉ cho biểu đồ cột)
-    setState(() {
-      _chartData = hourlyData.entries.map((entry) {
-        return ChartData(entry.key, entry.value['nhap']!, entry.value['xuat']!);
-      }).toList();
-    });
   }
+
+  // 5. Cập nhật UI
+  setState(() {
+    _chartData = [
+      ChartData('Ca 1', shiftData['Ca 1']!['nhap']!, shiftData['Ca 1']!['xuat']!),
+      ChartData('Ca 2', shiftData['Ca 2']!['nhap']!, shiftData['Ca 2']!['xuat']!),
+      ChartData('Ca 3', shiftData['Ca 3']!['nhap']!, shiftData['Ca 3']!['xuat']!),
+    ];
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       // 2. Body
       body: Container(
-        color: const Color(0xFFE3F2FD), // Màu nền xanh nhạt
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
@@ -152,10 +169,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Tổng Khối Lượng Theo Giờ',
+                  'DashBoard - Tổng Quan',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                _buildDatePicker(context),
+                DatePickerInput(
+                  selectedDate: _selectedDate,
+                  controller: _dateController,
+                  onDateSelected: (newDate) {
+                    // Logic xử lý khi ngày thay đổi (đã có)
+                    setState(() {
+                      _selectedDate = newDate;
+                    });
+                    _dateController.text = DateFormat('dd/MM/yyyy').format(newDate);
+                    _processDataForChart(newDate);
+                  },
+                  onDateCleared: () {
+                    // Ở Dashboard, "Xóa" có nghĩa là "Reset về hôm nay"
+                    final today = DateTime.now();
+                    setState(() {
+                      _selectedDate = today;
+                    });
+                    _dateController.text = DateFormat('dd/MM/yyyy').format(today);
+                    _processDataForChart(today);
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -174,7 +211,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: HourlyWeighingChart(data: _chartData),
+                    child: Stack(
+                          children: [
+                            // Lớp 1: Biểu đồ
+                            HourlyWeighingChart(data: _chartData),
+                          ],
+                        ),
                   ),
                 ),
 
@@ -200,66 +242,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // Widget Date Picker
-  Widget _buildDatePicker(BuildContext context) {
-    return Container(
-      width: 250, // Giữ độ rộng
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        // border: Border.all(color: Colors.grey[400]!), // <-- XÓA BORDER
-      ),
-      child: TextField(
-        controller: _dateController,
-        readOnly: true,
-        style: const TextStyle(fontSize: 20),
-        decoration: InputDecoration( // Bỏ 'const'
-          border: InputBorder.none,
-          
-          // --- THAY THẾ SUFFIXICON BẰNG ROW NÀY ---
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min, // Giúp Row co lại
-            children: [
-              // 1. Nút Lịch
-              IconButton(
-                icon: const Icon(Icons.calendar_today, size: 18),
-                onPressed: () async {
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null && picked != _selectedDate) {
-                    setState(() {
-                      _selectedDate = picked; // Cập nhật state
-                    });
-                    _dateController.text = DateFormat('dd/MM/yyyy').format(picked);
-                    _processDataForChart(picked);
-                  }
-                },
-              ),
-              
-              // 2. Nút Xóa (Reset về hôm nay)
-              IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                onPressed: () {
-                  final today = DateTime.now();
-                  setState(() {
-                    _selectedDate = today; // Cập nhật state
-                  });
-                  _dateController.text = DateFormat('dd/MM/yyyy').format(today);
-                  _processDataForChart(today);
-                },
-              ),
-            ],
-          )
         ),
       ),
     );

@@ -4,6 +4,7 @@ import '../../data/weighing_data.dart';
 import '../../services/bluetooth_service.dart';
 import '../../widgets/main_app_bar.dart';
 import 'widgets/history_table.dart';
+import '../../widgets/date_picker_input.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -215,65 +216,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
           const SizedBox(width: 16),
           
           // 2. Date Picker
-          SizedBox(
-            width: 150,
-            child: TextField(
-              controller: _dateController,
-              readOnly: true, // Không cho gõ
-              decoration: InputDecoration(
-                hintText: 'dd/mm/yyyy',
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Colors.black, width: 1.0),
-                ),
-                
-                // 3. Viền khi bấm vào (màu đen, dày hơn)
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
-                ),
-
-                // 4. Căn chỉnh lại padding bên trong ô
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
-                // Thêm icon Xóa và Lịch
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today, size: 20),
-                      onPressed: () async { // <-- Logic chọn ngày
-                        DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: _selectedDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _selectedDate = picked; // <-- Lưu state
-                            _dateController.text =
-                                DateFormat('dd/MM/yyyy').format(picked);
-                          });
-                          _runFilter(); // <-- Chạy lọc
-                        }
-                      },
-                    ),
-                    // Chỉ hiện nút Xóa khi đã chọn ngày
-                    if (_selectedDate != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
-                        onPressed: () { // <-- Logic xóa ngày
-                          setState(() {
-                            _selectedDate = null; // <-- Xóa state
-                            _dateController.clear();
-                          });
-                          _runFilter(); // <-- Chạy lọc
-                        },
-                      ),
-                  ],
-                ),
-              ),
-            ),
+          DatePickerInput(
+            selectedDate: _selectedDate, // Truyền ngày (có thể null)
+            controller: _dateController,
+            onDateSelected: (newDate) {
+              setState(() {
+                _selectedDate = newDate;
+              });
+              _dateController.text = DateFormat('dd/MM/yyyy').format(newDate);
+              _runFilter();
+            },
+            // --- THÊM LOGIC NÚT "XÓA" ---
+            onDateCleared: () {
+              setState(() {
+                _selectedDate = null; // Set về null
+              });
+              _dateController.clear();
+              _runFilter();
+            },
           ),
           const VerticalDivider(),
           

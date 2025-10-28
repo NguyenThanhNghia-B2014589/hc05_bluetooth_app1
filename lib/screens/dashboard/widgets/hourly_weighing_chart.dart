@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 
 // Dữ liệu mẫu
 class ChartData {
-  final int hour;
+  final String label;
   final double nhap;
   final double xuat;
-  const ChartData(this.hour, this.nhap, this.xuat);
+  const ChartData(this.label, this.nhap, this.xuat);
 }
 
 class HourlyWeighingChart extends StatelessWidget {
   const HourlyWeighingChart({super.key, required this.data});
   // Màu sắc
-  static const Color colorNhap = Color(0xFF81C784); // Xanh lá
+  static const Color colorNhap = Color(0xFF81C784); // Xanh l
   static const Color colorXuat = Color(0xFFE57373); // Đỏ
   final List<ChartData> data;
   
@@ -21,14 +21,21 @@ class HourlyWeighingChart extends StatelessWidget {
     // --- 5. TÍNH TOÁN maxY ĐỘNG ---
     double maxY = 1800; // Mặc định
     if (data.isNotEmpty) {
-      // Tìm giá trị tổng lớn nhất
+      // Tìm giá trị  lớn nhất
       final maxVal = data.map((d) => d.nhap + d.xuat).reduce((a, b) => a > b ? a : b);
       // Làm tròn lên 450 gần nhất (giống trục Y)
       maxY = (maxVal / 450).ceil() * 450;
       if (maxY == 0) maxY = 1800; // Tránh trường hợp 0
     }
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+         // 1. Tiêu đề
+        const Text(
+          'Khối Lượng Cân Theo Ca',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        
         Expanded(
           child: BarChart(
             BarChartData(
@@ -53,7 +60,7 @@ class HourlyWeighingChart extends StatelessWidget {
                       if (value == 300) return _bottomTitle('300', meta);
                       if (value == 400) return _bottomTitle('400', meta);
                       if (value == 900) return _bottomTitle('900', meta);
-                      if (value == 1350) return _bottomTitle('1350', meta);
+                      if (value == 1200) return _bottomTitle('1200', meta);
                       if (value == 1800) return _bottomTitle('1800',meta);
                       return const Text('');
                     },
@@ -67,11 +74,9 @@ class HourlyWeighingChart extends StatelessWidget {
                     reservedSize: 30,
                     getTitlesWidget: (value, meta) {
                       // value ở đây là index (0, 1, 2...)
-                      if (value.toInt() >= 0 && value.toInt() < data.length) {
-                        final int hour = data[value.toInt()].hour;
-                        return _bottomTitle('${hour.toString().padLeft(2, '0')}:00', meta);
-                      }
-                      return const Text('');
+                      if (value.toInt() >= data.length) return const Text(''); // Tránh lỗi
+                        final String label = data[value.toInt()].label; // <-- Lấy nhãn (Ca 1, Ca 2, Ca 3)
+                        return _bottomTitle(label, meta);
                     },
                   ),
                 ),
@@ -91,62 +96,41 @@ class HourlyWeighingChart extends StatelessWidget {
               borderData: FlBorderData(show: false),
               // 5. Cài đặt tương tác
               barTouchData: BarTouchData(
-                // Kích hoạt tooltip
+                
+                // 1. TẮT TƯƠNG TÁC (KHÔNG CẦN CHẠM/HOVER)
+                enabled: false, 
                 touchTooltipData: BarTouchTooltipData(
-                  tooltipPadding: const EdgeInsets.all(8),
-                  tooltipMargin: 8,
-                  tooltipBorderRadius: BorderRadius.circular(8),
-                  // Hàm tùy chỉnh nội dung tooltip
+                  tooltipPadding: EdgeInsets.zero,
+                  tooltipMargin: 5, // Khoảng cách 5px phía trên cột
+                  //tooltipBorderRadius: BorderRadius.zero,
+                  tooltipBorder: BorderSide.none, // BỎ BORDER
+                  // 3. TÙY CHỈNH NỘI DUNG (CHỈ HIỂN THỊ SỐ)
                   getTooltipItem: (
                     BarChartGroupData group,
                     int groupIndex,
                     BarChartRodData rod,
                     int rodIndex,
                   ) {
-                    String title;
-                    double value;
-                    
-                    // Lấy dữ liệu từ data list
-                    final chartData = data[groupIndex];
+                    double value = rod.toY;
 
-                    // Kiểm tra vị trí click dựa trên rodIndex
-                    if (rodIndex == 0) {
-                      // Click vào phần Nhập (xanh lá)
-                      title = 'Khối lượng nhập:';
-                      value = chartData.nhap;
-                    } else {
-                      // Click vào phần Xuất (đỏ)
-                      title = 'Khối lượng xuất:';
-                      value = chartData.xuat;
-                    }
-                    
-                    // Ẩn tooltip nếu bấm vào phần có giá trị = 0
+                    // Không hiển thị số 0
                     if (value == 0) {
                       return null;
                     }
 
+                    // Chỉ trả về con số
                     return BarTooltipItem(
-                      '$title\n',
+                      value.toStringAsFixed(2),
                       const TextStyle(
-                        color: Colors.white,
+                        color: Colors.white, // Màu chữ trắng trên nền tối
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: value.toStringAsFixed(3), 
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
                     );
                   },
                 ),
               ),
-
+              
               // 5. Dữ liệu cột
               barGroups: _generateBarGroups(),
 
@@ -162,34 +146,42 @@ class HourlyWeighingChart extends StatelessWidget {
     );
   }
 
-  // Hàm tạo các cột dữ liệu
+  // Hàm tạo các cột dữ liệu (ĐÃ SỬA)
   List<BarChartGroupData> _generateBarGroups() {
+    const double barWidth = 80; // Độ rộng của mỗi cột (nhập/xuất)
+    const double barsSpace = 10; // Khoảng cách giữa 2 cột (nhập/xuất)
+
     return List.generate(data.length, (index) {
       final item = data[index];
-      
-      // Tính tổng (để làm phần nền)
-      final total = item.nhap + item.xuat;
-
       return BarChartGroupData(
-        x: index, // Vị trí (0, 1, 2...)
+        x: index, // Vị trí nhóm (0, 1, 2... ứng với 7h, 8h...)
+        barsSpace: barsSpace, // Khoảng cách giữa 2 cột
+
+        // --- 4. THÊM DÒNG NÀY ĐỂ BẮT BUỘC HIỂN THỊ SỐ ---
+        showingTooltipIndicators: [0, 1], 
+        // --- KẾT THÚC THÊM ---
+
         barRods: [
+          // CỘT 1: NHẬP (XANH)
           BarChartRodData(
-            toY: total,
-            width: 35,
+            toY: item.nhap,
+            width: barWidth,
+            color: colorNhap, // Dùng 'color' thay vì 'rodStackItems'
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(4),
               topRight: Radius.circular(4),
             ),
-            // Đây là phần xếp chồng (Stacked)
-            rodStackItems: [
-              // Lớp 1 (dưới): Cân Nhập (Xanh)
-              BarChartRodStackItem(0, item.nhap, colorNhap),
-              
-              // Lớp 2 (trên): Cân Xuất (Đỏ)
-              BarChartRodStackItem(item.nhap, total, colorXuat),
-            ],
-            // Màu nền cho phần còn lại của cột (lên đến maxY)
-            color: Colors.grey[200], 
+          ),
+
+          // CỘT 2: XUẤT (ĐỎ)
+          BarChartRodData(
+            toY: item.xuat,
+            width: barWidth,
+            color: colorXuat, // Dùng 'color'
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(4),
+            ),
           ),
         ],
       );
