@@ -128,11 +128,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
           SizedBox(
             width: 250,
             child: TextField(
-              controller: _controller.searchController, // <-- Dùng controller
-              decoration: const InputDecoration(
+              controller: _controller.searchController, // Listener đã được thêm trong initState
+              decoration: InputDecoration(
                 hintText: 'Tìm kiếm...',
                 prefixIcon: Icon(Icons.search),
-                border: InputBorder.none,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.0),
+                ),
+                
+                // 3. Viền khi bấm vào (màu đen, dày hơn)
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
+                ),
+
+                // 4. Căn chỉnh lại padding bên trong ô
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
               ),
             ),
           ),
