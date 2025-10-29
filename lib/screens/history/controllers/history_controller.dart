@@ -131,11 +131,9 @@ class HistoryController with ChangeNotifier {
           return record.tenPhoiKeo?.toLowerCase().contains(query) ?? false;
         } else if (_selectedFilterType == 'Mã code') {
           return record.maCode.toLowerCase().contains(query);
+        } else if (_selectedFilterType == 'OVNO') { // <-- ADD THIS CONDITION
+          return record.ovNO.toLowerCase().contains(query); // <-- Filter by ovNO
         }
-        // Thêm tìm kiếm chung (nếu cần bỏ comment)
-        // return (record.tenPhoiKeo?.toLowerCase().contains(query) ?? false) ||
-        //        record.maCode.toLowerCase().contains(query) ||
-        //        matchSoLo;
         return false;
       }).toList();
     }

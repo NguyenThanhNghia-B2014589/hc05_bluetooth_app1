@@ -100,6 +100,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 items: const [
                   DropdownMenuItem(value: 'Tên phôi keo', child: Text('Tên phôi keo')),
                   DropdownMenuItem(value: 'Mã code', child: Text('Mã code')),
+                  DropdownMenuItem(value: 'OVNO', child: Text('OVNO')),
                 ],
                 onChanged: (value) {
                   _controller.updateFilterType(value); // <-- Gọi controller
