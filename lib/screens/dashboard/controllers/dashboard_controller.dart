@@ -28,46 +28,77 @@ class DashboardController with ChangeNotifier {
 
   // --- THAY THẾ HÀM _loadDataFromMock ---
   void _loadDataFromMock() {
-    _allRecords = []; // Xóa list cũ
+    _allRecords = []; // Clear the old list
     double dayNhap = 0.0;
     double dayXuat = 0.0;
 
-    _workLSData.forEach((maCode, workLSItem) {
-      final dynamic mixTimeValue = workLSItem['MixTime'];
-      final DateTime? mixTime = parseMixTime(mixTimeValue); // Dùng hàm helper
+    // Iterate through the HISTORY data
+    mockHistoryData.forEach((historyKey, historyItem) {
+      // Get core info from History
+      final String maCode = historyItem['maCode'];
+      final String mixTimeString = historyItem['MixTime'];
+      final double? realQtyValue = historyItem['khoiLuongSauCan']; // Actual weighed amount from history
+      final String? loaiValue = historyItem['loai'];
 
-      // Chỉ xử lý các bản ghi đã hoàn tất (có MixTime)
-      if (mixTime != null) {
+      final DateTime? mixTime = parseMixTime(mixTimeString); // Use the helper
+
+      // Skip if time is invalid
+      if (mixTime == null) return;
+
+      // --- Look up additional info ---
+      // 1. Find in WorkLS using maCode to get OVNO, package, MUserID, Qty (Target/Stock)
+      final workLSItem = _workLSData[maCode];
+      if (workLSItem == null) {
+        print('Dashboard Warning: Cannot find code $maCode in mockWorkLSData.');
+        // If we still want to show the history entry even if the original LS is gone:
+        // Create a record with available data, marking others as unknown.
+        _allRecords.add(WeighingRecord(
+            maCode: maCode, ovNO: 'N/A', package: 0, mUserID: 0,
+            qty: 0.0, // Target/Stock unknown
+            mixTime: mixTime, realQty: realQtyValue, isSuccess: true,
+            loai: loaiValue, soLo: 0, tenPhoiKeo: 'N/A', soMay: 'N/A', nguoiThaoTac: 'N/A',
+        ));
+      } else {
+        // Found the original WorkLS entry, proceed to get full details
         final String ovNO = workLSItem['OVNO'];
         final int package = workLSItem['package'];
         final int mUserID = workLSItem['MUserID'];
-        final double qtyValue = workLSItem['Qty'];
-        final double? realQtyValue = workLSItem['RKQty'];
-        final String? loaiValue = workLSItem['loai'];
+        final double qtyValue = workLSItem['Qty']; // Target/Stock Qty from WorkLS
 
-        // Tra cứu
+        // 2. Find in Work using OVNO
         final workItem = _workData[ovNO];
-        final persionalItem = _persionalData[mUserID];
         final String tenPhoiKeo = workItem?['FormulaF'] ?? 'Không rõ';
         final String soMay = workItem?['soMay'] ?? 'N/A';
+
+        // 3. Find in Persional using MUserID
+        final persionalItem = _persionalData[mUserID];
         final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
 
-        // Tạo Record
-        final record = WeighingRecord(
-          maCode: maCode, ovNO: ovNO, package: package, mUserID: mUserID,
-          qty: qtyValue, mixTime: mixTime, realQty: realQtyValue,
-          isSuccess: true, loai: loaiValue, tenPhoiKeo: tenPhoiKeo,
-          soMay: soMay, nguoiThaoTac: nguoiThaoTac, soLo: package, // Gán package vào soLo
-        );
-        _allRecords.add(record);
+        // Create the complete WeighingRecord object
+        _allRecords.add(WeighingRecord(
+          maCode: maCode,
+          ovNO: ovNO,
+          package: package,
+          mUserID: mUserID,
+          qty: qtyValue, // Target/Stock Qty
+          mixTime: mixTime, // Actual weigh time from History
+          realQty: realQtyValue, // Actual weigh amount from History
+          isSuccess: true, // History is assumed successful
+          loai: loaiValue, // Type from History
+          soLo: package, // Package as Batch No.
+          // Additional looked-up info
+          tenPhoiKeo: tenPhoiKeo,
+          soMay: soMay,
+          nguoiThaoTac: nguoiThaoTac,
+        ));
+      }
 
-        // Tính tổng cho Pie Chart
-        final amount = record.realQty ?? 0.0; // Dùng realQty (đã cân)
-        if (record.loai == 'nhap') {
-          dayNhap += amount;
-        } else if (record.loai == 'xuat') {
-          dayXuat += amount;
-        }
+      // --- Calculate totals for Pie Chart using history data ---
+      final amount = realQtyValue ?? 0.0; // Use the actual weighed amount
+      if (loaiValue == 'nhap') {
+        dayNhap += amount;
+      } else if (loaiValue == 'xuat') {
+        dayXuat += amount;
       }
     });
 
@@ -76,7 +107,6 @@ class DashboardController with ChangeNotifier {
     _totalXuat = dayXuat;
     // Không cần notifyListeners ở đây
   }
-  // --- KẾT THÚC THAY THẾ ---
 
   // --- Hàm _processDataForChart (giữ nguyên logic, chỉ cần kiểm tra tên trường) ---
   void _processDataForChart(DateTime date) {

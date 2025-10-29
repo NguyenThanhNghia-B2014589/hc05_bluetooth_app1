@@ -46,49 +46,57 @@ class HistoryController with ChangeNotifier {
   void _loadData() {
     _allRecords = []; // Xóa list cũ
 
-    // Duyệt qua dữ liệu _VML_WorkLS
-    _workLSData.forEach((maCode, workLSItem) {
-      // Chỉ lấy các bản ghi đã hoàn tất (có MixTime)
-      final dynamic mixTimeValue = workLSItem['MixTime'];
-      final DateTime? mixTime = parseMixTime(mixTimeValue); // Dùng hàm helper
+    // Duyệt qua dữ liệu LỊCH SỬ (mockHistoryData)
+    mockHistoryData.forEach((historyKey, historyItem) {
+      // Lấy thông tin chính từ History
+      final String maCode = historyItem['maCode']; // Mã code từ history
+      final String mixTimeString = historyItem['MixTime'];
+      final double? realQtyValue = historyItem['khoiLuongSauCan']; // Khối lượng đã cân
+      final String? loaiValue = historyItem['loai']; // Loại cân
 
-      if (mixTime != null) {
-        // Lấy thông tin cơ bản từ WorkLS
-        final String ovNO = workLSItem['OVNO'];
-        final int package = workLSItem['package'];
-        final int mUserID = workLSItem['MUserID'];
-        final double qtyValue = workLSItem['Qty']; // Mẻ/Tồn
-        final double? realQtyValue = workLSItem['RKQty']; // Đã cân
-        final String? loaiValue = workLSItem['loai']; // Loại (từ mock data mới)
+      final DateTime? mixTime = parseMixTime(mixTimeString); // Dùng hàm helper
 
-        // Tra cứu thông tin bổ sung
-        final workItem = _workData[ovNO];
-        final persionalItem = _persionalData[mUserID];
+      // Bỏ qua nếu không parse được thời gian
+      if (mixTime == null) return;
 
-        final String tenPhoiKeo = workItem?['FormulaF'] ?? 'Không rõ';
-        final String soMay = workItem?['soMay'] ?? 'N/A';
-        final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
-
-        
-
-        // Tạo đối tượng WeighingRecord hoàn chỉnh
-        _allRecords.add(WeighingRecord(
-          maCode: maCode,
-          ovNO: ovNO,
-          package: package,
-          mUserID: mUserID,
-          qty: qtyValue,
-          mixTime: mixTime, // Thời gian cân
-          realQty: realQtyValue, // Khối lượng đã cân
-          isSuccess: true, // Lịch sử mặc định là thành công
-          loai: loaiValue, // Loại cân
-          // Thông tin bổ sung
-          tenPhoiKeo: tenPhoiKeo,
-          soMay: soMay,
-          nguoiThaoTac: nguoiThaoTac,
-          soLo: package,
-        ));
+      // --- Tra cứu thông tin bổ sung ---
+      // 1. Tìm trong WorkLS bằng maCode để lấy OVNO, package, MUserID
+      final workLSItem = _workLSData[maCode];
+      if (workLSItem == null) {
+        print('Cảnh báo: Không tìm thấy mã $maCode trong mockWorkLSData.');
+        return; // Bỏ qua bản ghi này nếu không tìm thấy gốc
       }
+      final String ovNO = workLSItem['OVNO'];
+      final int package = workLSItem['package']; // Dùng làm Số Lô
+      final int mUserID = workLSItem['MUserID'];
+      final double qtyValue = workLSItem['Qty']; // Khối lượng Mẻ/Tồn từ WorkLS
+
+      // 2. Tìm trong Work bằng OVNO
+      final workItem = _workData[ovNO];
+      final String tenPhoiKeo = workItem?['FormulaF'] ?? 'Không rõ';
+      final String soMay = workItem?['soMay'] ?? 'N/A';
+
+      // 3. Tìm trong Persional bằng MUserID
+      final persionalItem = _persionalData[mUserID];
+      final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
+
+      // Tạo đối tượng WeighingRecord hoàn chỉnh
+      _allRecords.add(WeighingRecord(
+        maCode: maCode,
+        ovNO: ovNO,
+        package: package,
+        mUserID: mUserID,
+        qty: qtyValue, // KL Mẻ/Tồn
+        mixTime: mixTime, // Thời gian cân (từ History)
+        realQty: realQtyValue, // KL Đã Cân (từ History)
+        isSuccess: true, // Lịch sử mặc định là thành công
+        loai: loaiValue, // Loại cân (từ History)
+        soLo: package, // Gán package vào soLo
+        // Thông tin bổ sung đã tra cứu
+        tenPhoiKeo: tenPhoiKeo,
+        soMay: soMay,
+        nguoiThaoTac: nguoiThaoTac,
+      ));
     });
 
     // Sắp xếp theo thời gian mới nhất lên trước

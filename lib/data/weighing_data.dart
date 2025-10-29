@@ -85,7 +85,7 @@ final Map<String, Map<String, dynamic>> mockWorkLSData = {
   '202508000002': {
     'OVNO': 'PD202508000002',
     'package': 2,
-    'MUserID': 23158,
+    'MUserID': 9268,
     'MixTime': null,
     'Qty': 80.00,
     'RKQty': null,
@@ -93,15 +93,40 @@ final Map<String, Map<String, dynamic>> mockWorkLSData = {
   '202508000003': {
     'OVNO': 'PD202508000002',
     'package': 3,
-    'MUserID': 23158,
+    'MUserID': 9268,
     'MixTime': null,
     'Qty': 80.00,
     'RKQty': null,
   },
+  '202510000001': {
+    'OVNO': 'PD202510000001',
+    'package': 1,
+    'MUserID': 9268,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
+  },
+  '202510000002': {
+    'OVNO': 'PD202510000001',
+    'package': 2,
+    'MUserID': 9268,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
+  },
+  '202510000003': {
+    'OVNO': 'PD202510000001',
+    'package': 3,
+    'MUserID': 9268,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
+  },
+
   // Thêm mã từ mock history để test dashboard
   '202508000001_hist_nhap': {
     'OVNO': 'PD202508000002', // Giả sử cùng OVNO
-    'package': 99, // Giả sử
+    'package': 1, // Giả sử
     'MUserID': 23158, // Giả sử
     'MixTime': '29/10/2025 08:10', // Dạng string để parse
     'Qty': 80.00, // Khối lượng mẻ/tồn
@@ -110,7 +135,7 @@ final Map<String, Map<String, dynamic>> mockWorkLSData = {
   },
    '202508000001_hist_xuat': {
     'OVNO': 'PD202508000002', // Giả sử cùng OVNO
-    'package': 100, // Giả sử
+    'package': 1, // Giả sử
     'MUserID': 23158, // Giả sử
     'MixTime': '29/10/2025 08:15', // Dạng string để parse
     'Qty': 80.00, // Khối lượng mẻ/tồn
@@ -124,13 +149,35 @@ final Map<String, Map<String, dynamic>> mockWorkLSData = {
 // Chuyển sang dùng trực tiếp mockWorkLSData ở trên
 
 final Map<String, Map<String, dynamic>> mockHistoryData = {
-  '202508000001_1': { // Key có thể cần duy nhất hơn
+  'N202508000001': { // Key có thể cần duy nhất hơn
+    'maCode': '202508000001',
     'MixTime': '29/10/2025 08:10',
     'khoiLuongSauCan': 80.0, // Đổi thành double
     'loai': 'nhap',
     // Cần thêm QRCode để liên kết
   },
-  '202508000001_2': {
+  'X202508000001': {
+    'maCode': '202508000001',
+    'MixTime': '29/10/2025 08:15',
+    'khoiLuongSauCan': 80.0,
+    'loai': 'xuat',
+  },
+  'N202508000002': { // Key có thể cần duy nhất hơn
+    'maCode': '202508000002',
+    'MixTime': '29/10/2025 08:20',
+    'khoiLuongSauCan': 80.0, // Đổi thành double
+    'loai': 'nhap',
+    // Cần thêm QRCode để liên kết
+  },
+  'N202510000001': { // Key có thể cần duy nhất hơn
+    'maCode': '202510000001',
+    'MixTime': '29/10/2025 08:10',
+    'khoiLuongSauCan': 80.0, // Đổi thành double
+    'loai': 'nhap',
+    // Cần thêm QRCode để liên kết
+  },
+  'X202510000001': {
+    'maCode': '202510000001',
     'MixTime': '29/10/2025 08:15',
     'khoiLuongSauCan': 80.0,
     'loai': 'xuat',
