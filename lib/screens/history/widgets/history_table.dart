@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Cần để format ngày
+import 'package:intl/intl.dart';
 import '../../../data/weighing_data.dart'; // Import model
 
 class HistoryTable extends StatelessWidget {
@@ -31,7 +31,7 @@ class HistoryTable extends StatelessWidget {
     // Định dạng ngày giờ
     String formatDateTime(DateTime? dt) {
       if (dt == null) return '---';
-      return DateFormat('dd/MM/yyyy HH:mm').format(dt);
+      return DateFormat('dd/MM/yyyy HH:mm').format(dt); // Giữ format đầy đủ
     }
 
     return Container(
@@ -42,14 +42,14 @@ class HistoryTable extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // 1. Header Row
+          // --- HEADER ROW (Đã cập nhật) ---
           IntrinsicHeight(
             child: Row(
               children: [
-                headerCell('Mã Code', 2), verticalDivider(),
+                headerCell('Mã Code', 3), verticalDivider(),
                 headerCell('Tên Phôi Keo', 3), verticalDivider(),
-                headerCell('Số Lô', 2), verticalDivider(),
-                headerCell('Số Máy', 2), verticalDivider(),
+                headerCell('Số Lô', 1), verticalDivider(),
+                headerCell('Số Máy', 1), verticalDivider(),
                 headerCell('Người Thao Tác', 3), verticalDivider(),
                 headerCell('Thời Gian Cân', 3), verticalDivider(),
                 headerCell('Khối Lượng Mẻ (kg)', 3), verticalDivider(),
@@ -58,35 +58,37 @@ class HistoryTable extends StatelessWidget {
               ],
             ),
           ),
-          
-          // 2. Data Rows
+
+          // --- DATA ROWS (Đã cập nhật) ---
           Expanded(
             child: Container(
               color: Colors.white, // Nền trắng cho các dòng dữ liệu
-              child: ListView.builder(
-                itemCount: records.length,
-                itemBuilder: (context, index) {
-                  final record = records[index];
-                  return Container(
-                    color: index.isEven ? Colors.white :const Color.fromARGB(255, 231, 231, 231),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        children: [
-                          dataCell(record.maCode, 2),
-                          dataCell(record.tenPhoiKeo, 3),
-                          dataCell(record.soLo, 2),
-                          dataCell(record.soMay, 2),
-                          dataCell(record.nguoiThaoTac, 3),
-                          dataCell(formatDateTime(record.thoiGianCan), 3),
-                          dataCell(record.khoiLuongMe.toStringAsFixed(3), 3),
-                          dataCell(record.khoiLuongSauCan?.toStringAsFixed(3) ?? '---', 3),
-                          dataCell(record.loai ?? '---', 2),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+              child: records.isEmpty // Thêm kiểm tra rỗng ở đây
+                ? Center(child: Text('Không có dữ liệu lịch sử.', style: TextStyle(color: Colors.grey[600])))
+                : ListView.builder(
+                    itemCount: records.length,
+                    itemBuilder: (context, index) {
+                      final record = records[index];
+                      return Container(
+                        color: index.isEven ? Colors.white :const Color.fromARGB(255, 231, 231, 231),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              dataCell(record.maCode, 3), // QRCode
+                              dataCell(record.tenPhoiKeo ?? 'N/A', 3), // FormulaF
+                              dataCell(record.soLo.toString(), 1), // package
+                              dataCell(record.soMay ?? 'N/A', 1), // soMay
+                              dataCell(record.nguoiThaoTac ?? 'N/A', 3), // UerName
+                              dataCell(formatDateTime(record.mixTime), 3), // Thời gian
+                              dataCell(record.qty.toStringAsFixed(3), 3), // Mẻ/Tồn
+                              dataCell(record.realQty?.toStringAsFixed(3) ?? '---', 3), // Đã Cân
+                              dataCell(record.loai ?? 'N/A', 2), // loai
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
             ),
           ),
         ],

@@ -1,316 +1,167 @@
-// Class model cho bản ghi cân
-class WeighingRecord {
-  final String tenPhoiKeo;
-  final String soLo;
-  final String soMay;
-  final double khoiLuongMe;
-  final String nguoiThaoTac;
-  final String maCode;
-  DateTime? thoiGianCan;
-  final double? khoiLuongSauCan;
-  double? khoiLuongDaCan;
-  final String? loai;
+// lib/data/weighing_data.dart
 
-  bool? isSuccess;
+// --- Bảng _VML_Persional ---
+import 'package:flutter/foundation.dart';
+
+final Map<int, Map<String, dynamic>> mockPersionalData = {
+  7265: {'UerName': 'LA HOANG NAM'},
+  9268: {'UerName': 'PHAM TRUONG HOANG BAO DI'},
+  10004: {'UerName': 'NGUYEN KIM NGAN'},
+  23158: {'UerName': 'NGUYEN VAN A'}, // Thêm ví dụ
+};
+
+// --- Bảng _VML_Work ---
+final Map<String, Map<String, dynamic>> mockWorkData = {
+  'PD202508000002': {
+    'FormulaF': 'V6504W-01',
+    'Qty': 1871.1904, // Sử dụng dấu chấm thập phân
+    'Batch': 20,
+    'soMay': '1', // Giữ là String nếu cần
+    'Memo': 'Test',
+  },
+  'PD202510000001': {
+    'FormulaF': 'V-5500G-01',
+    'Qty': 1871.1904,
+    'Batch': 30,
+    'soMay': '1',
+    'Memo': null,
+  },
+  'PD202510000003': {
+    'FormulaF': 'V-5500G-01',
+    'Qty': 2288.10,
+    'Batch': 30,
+    'soMay': '1',
+    'Memo': null,
+  },
+};
+
+// --- Bảng _VML_WorkLS ---
+// Dùng làm class chính WeighingRecord
+class WeighingRecord {
+  final String maCode; // QRCode
+  final String ovNO; // OVNO
+  final int package; // package
+  final int mUserID; // MUserID
+  DateTime? mixTime; // MixTime (Thời gian cân thực tế)
+  final double qty; // Qty (Khối lượng mẻ/tồn - theo logic mới)
+  double? realQty; // RKQty (Khối lượng cân thực tế)
+  bool? isSuccess; // Trạng thái thành công (tự thêm)
+  String? loai; // Loại nhập/xuất (từ mock history)
+  final int soLo;
+
+  // --- Thêm các trường từ bảng khác (để tiện truy cập) ---
+  String? tenPhoiKeo; // FormulaF (từ _VML_Work)
+  String? soMay; // soMay (từ _VML_Work)
+  String? nguoiThaoTac; // UerName (từ _VML_Persional)
 
   WeighingRecord({
     required this.maCode,
-    required this.tenPhoiKeo,
+    required this.ovNO,
+    required this.package,
+    required this.mUserID,
+    required this.qty,
     required this.soLo,
-    required this.soMay,
-    required this.khoiLuongMe,
-    required this.nguoiThaoTac,
-    this.thoiGianCan,
-    this.khoiLuongSauCan,
-    this.khoiLuongDaCan,
+    this.mixTime,
+    this.realQty,
+    this.isSuccess,
     this.loai,
+    // Các trường bổ sung
+    this.tenPhoiKeo,
+    this.soMay,
+    this.nguoiThaoTac,
   });
 }
 
-  // --- THÊM DỮ LIỆU MẪU ---
-  final Map<String, Map<String, dynamic>> mockWeighingData = {
-  '123': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'khoiLuongMe': 3.000,
+// Dữ liệu mẫu cho _VML_WorkLS (chỉ vài dòng để test)
+final Map<String, Map<String, dynamic>> mockWorkLSData = {
+  '202508000001': {
+    'OVNO': 'PD202508000002',
+    'package': 1,
+    'MUserID': 9268,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
   },
-  '456': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'khoiLuongMe': 73.0,
+  '202508000002': {
+    'OVNO': 'PD202508000002',
+    'package': 2,
+    'MUserID': 23158,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
   },
-  '789': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'khoiLuongMe': 45.0,
+  '202508000003': {
+    'OVNO': 'PD202508000002',
+    'package': 3,
+    'MUserID': 23158,
+    'MixTime': null,
+    'Qty': 80.00,
+    'RKQty': null,
+  },
+  // Thêm mã từ mock history để test dashboard
+  '202508000001_hist_nhap': {
+    'OVNO': 'PD202508000002', // Giả sử cùng OVNO
+    'package': 99, // Giả sử
+    'MUserID': 23158, // Giả sử
+    'MixTime': '29/10/2025 08:10', // Dạng string để parse
+    'Qty': 80.00, // Khối lượng mẻ/tồn
+    'RKQty': 80.00, // Khối lượng thực tế
+    'loai': 'nhap',
+  },
+   '202508000001_hist_xuat': {
+    'OVNO': 'PD202508000002', // Giả sử cùng OVNO
+    'package': 100, // Giả sử
+    'MUserID': 23158, // Giả sử
+    'MixTime': '29/10/2025 08:15', // Dạng string để parse
+    'Qty': 80.00, // Khối lượng mẻ/tồn
+    'RKQty': 80.00, // Khối lượng thực tế
+    'loai': 'xuat',
   },
 };
 
-final Map<String, Map<String, dynamic>> mockLastWeighingData = {
-  '123': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '10:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
+// --- Bảng _VML_History ---
+// Dữ liệu này sẽ được dùng để load vào HistoryScreen và DashboardController
+// Chuyển sang dùng trực tiếp mockWorkLSData ở trên
+
+final Map<String, Map<String, dynamic>> mockHistoryData = {
+  '202508000001_1': { // Key có thể cần duy nhất hơn
+    'MixTime': '29/10/2025 08:10',
+    'khoiLuongSauCan': 80.0, // Đổi thành double
     'loai': 'nhap',
+    // Cần thêm QRCode để liên kết
   },
-  '456': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '09:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'nhap',
-  },
-  '789': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'abc': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '10:26 26/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
-    'loai': 'nhap',
-  },
-  'xyz': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '09:15 26/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'nhap',
-  },
-  'qwe': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'thoiGianCan': '11:00 26/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'rty': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '10:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
+  '202508000001_2': {
+    'MixTime': '29/10/2025 08:15',
+    'khoiLuongSauCan': 80.0,
     'loai': 'xuat',
-  },
-  'uio': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '09:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'xuat',
-  },
-  'asd': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'xuat',
-  },
-  'fgh': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '10:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
-    'loai': 'xuat',
-  },
-  'jkl': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '09:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'xuat',
-  },
-  'zxc': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'xuat',
-  },
-  'vbn': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '10:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.9,
-    'loai': 'nhap',
-  },
-  'mnb': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '09:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'nhap',
-  },
-  'vcx': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van C',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'vgd': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '10:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
-    'loai': 'nhap',
-  },
-  'nkd': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '09:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'nhap',
-  },
-  'mso': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'gsv': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'tyb': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
-  },
-  'ert': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'xuat',
-  },
-  'efh': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'xuat',
-  },
-  'adf': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '11:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'xuat',
-  },
-  'vgdd': {
-    'tenPhoiKeo': 'Phôi keo A',
-    'soLo': 'Lô 1',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van B',
-    'thoiGianCan': '22:26 28/10/2025',
-    'khoiLuongMe': 20.000,
-    'khoiLuongSauCan': 19.900,
-    'loai': 'nhap',
-  },
-  'nkad': {
-    'tenPhoiKeo': 'Phôi keo B',
-    'soLo': 'Lô 2',
-    'soMay': 'Máy 3',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '15:15 28/10/2025',
-    'khoiLuongMe': 73.0,
-    'khoiLuongSauCan': 73.1,
-    'loai': 'nhap',
-  },
-  'msso': {
-    'tenPhoiKeo': 'Phôi keo C-VIP',
-    'soLo': 'Lô 7',
-    'soMay': 'Máy 1',
-    'nguoiThaoTac': 'Nguyen Van A',
-    'thoiGianCan': '22:00 28/10/2025',
-    'khoiLuongMe': 45.0,
-    'khoiLuongSauCan': 44.5,
-    'loai': 'nhap',
   },
 };
+
+
+// --- Hàm Parse Date Helper ---
+// (Chuyển hàm này ra đây để dùng chung)
+DateTime? parseMixTime(dynamic mixTimeValue) {
+  if (mixTimeValue is String) {
+    try {
+      // Format: '29/10/2025 08:10'
+      final parts = mixTimeValue.split(' ');
+      final dateParts = parts[0].split('/'); // ['29', '10', '2025']
+      final timeParts = parts[1].split(':'); // ['08', '10']
+      return DateTime(
+        int.parse(dateParts[2]), // year
+        int.parse(dateParts[1]), // month
+        int.parse(dateParts[0]), // day
+        int.parse(timeParts[0]), // hour
+        int.parse(timeParts[1]), // minute
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Lỗi parse MixTime String: $e');
+      }
+      return null;
+    }
+  } else if (mixTimeValue is DateTime) {
+    return mixTimeValue; // Nếu đã là DateTime thì trả về luôn
+  }
+  return null; // Trả về null nếu không parse được
+}

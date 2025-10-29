@@ -1,30 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../data/weighing_data.dart'; // Import model và mock data
+import '../../../data/weighing_data.dart'; // Import data mới
 
 class HistoryController with ChangeNotifier {
   // --- Controllers cho UI ---
   final TextEditingController dateController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
 
+  // --- Dữ liệu Mock (giờ lấy từ weighing_data.dart) ---
+  final Map<String, Map<String, dynamic>> _workLSData = mockWorkLSData;
+  final Map<String, Map<String, dynamic>> _workData = mockWorkData;
+  final Map<int, Map<String, dynamic>> _persionalData = mockPersionalData;
+
   // --- State quản lý dữ liệu ---
-  List<WeighingRecord> _allRecords = [];
+  List<WeighingRecord> _allRecords = []; // Danh sách đầy đủ (đã xử lý)
   List<WeighingRecord> _filteredRecords = [];
-  List<WeighingRecord> get filteredRecords => _filteredRecords; // Getter cho UI
+  List<WeighingRecord> get filteredRecords => _filteredRecords;
 
   // --- State quản lý Filter ---
   String _selectedFilterType = 'Tên phôi keo';
   String get selectedFilterType => _selectedFilterType;
-
   DateTime? _selectedDate;
   DateTime? get selectedDate => _selectedDate;
-
   String _searchText = '';
   String get searchText => _searchText;
 
   HistoryController() {
     _loadData(); // Tải data khi controller được tạo
-    // Thêm listener cho ô tìm kiếm
     searchController.addListener(() {
       if (_searchText != searchController.text) {
         _searchText = searchController.text;
@@ -40,46 +42,63 @@ class HistoryController with ChangeNotifier {
     super.dispose();
   }
 
-  // --- Logic tải dữ liệu (từ HistoryScreen cũ) ---
+  // --- THAY THẾ TOÀN BỘ HÀM _loadData ---
   void _loadData() {
-    DateTime parseMockDate(String dateStr) {
-      try {
-        final parts = dateStr.split(' ');
-        final timeParts = parts[0].split(':');
-        final dateParts = parts[1].split('/');
-        return DateTime(
-          int.parse(dateParts[2]), int.parse(dateParts[1]), int.parse(dateParts[0]),
-          int.parse(timeParts[0]), int.parse(timeParts[1]),
-        );
-      } catch (e) { return DateTime(2000); }
-    }
+    _allRecords = []; // Xóa list cũ
 
-    _allRecords = mockLastWeighingData.entries.map((entry) {
-      final code = entry.key;
-      final data = entry.value;
-      return WeighingRecord(
-        maCode: code,
-        tenPhoiKeo: data['tenPhoiKeo']!,
-        soLo: data['soLo']!,
-        soMay: data['soMay']!,
-        nguoiThaoTac: data['nguoiThaoTac']!,
-        thoiGianCan: parseMockDate(data['thoiGianCan']!),
-        khoiLuongMe: data['khoiLuongMe']!,
-        khoiLuongSauCan: data['khoiLuongSauCan']!,
-        loai: data['loai'],
-      );
-    }).toList();
-    _allRecords.sort((a, b) {
-      // Sắp xếp giảm dần (descending) theo thời gian cân
-      // (Giả sử thoiGianCan không bao giờ null trong mock lịch sử)
-      return b.thoiGianCan!.compareTo(a.thoiGianCan!);
+    // Duyệt qua dữ liệu _VML_WorkLS
+    _workLSData.forEach((maCode, workLSItem) {
+      // Chỉ lấy các bản ghi đã hoàn tất (có MixTime)
+      final dynamic mixTimeValue = workLSItem['MixTime'];
+      final DateTime? mixTime = parseMixTime(mixTimeValue); // Dùng hàm helper
+
+      if (mixTime != null) {
+        // Lấy thông tin cơ bản từ WorkLS
+        final String ovNO = workLSItem['OVNO'];
+        final int package = workLSItem['package'];
+        final int mUserID = workLSItem['MUserID'];
+        final double qtyValue = workLSItem['Qty']; // Mẻ/Tồn
+        final double? realQtyValue = workLSItem['RKQty']; // Đã cân
+        final String? loaiValue = workLSItem['loai']; // Loại (từ mock data mới)
+
+        // Tra cứu thông tin bổ sung
+        final workItem = _workData[ovNO];
+        final persionalItem = _persionalData[mUserID];
+
+        final String tenPhoiKeo = workItem?['FormulaF'] ?? 'Không rõ';
+        final String soMay = workItem?['soMay'] ?? 'N/A';
+        final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
+
+        
+
+        // Tạo đối tượng WeighingRecord hoàn chỉnh
+        _allRecords.add(WeighingRecord(
+          maCode: maCode,
+          ovNO: ovNO,
+          package: package,
+          mUserID: mUserID,
+          qty: qtyValue,
+          mixTime: mixTime, // Thời gian cân
+          realQty: realQtyValue, // Khối lượng đã cân
+          isSuccess: true, // Lịch sử mặc định là thành công
+          loai: loaiValue, // Loại cân
+          // Thông tin bổ sung
+          tenPhoiKeo: tenPhoiKeo,
+          soMay: soMay,
+          nguoiThaoTac: nguoiThaoTac,
+          soLo: package,
+        ));
+      }
     });
 
+    // Sắp xếp theo thời gian mới nhất lên trước
+    _allRecords.sort((a, b) => b.mixTime!.compareTo(a.mixTime!));
+
     _filteredRecords = _allRecords; // Ban đầu hiển thị tất cả
-    notifyListeners(); // Thông báo cho UI cập nhật
+    notifyListeners();
   }
 
-  // --- Logic Filter (từ HistoryScreen cũ) ---
+  // --- Logic Filter (giữ nguyên) ---
   bool _isSameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -88,35 +107,40 @@ class HistoryController with ChangeNotifier {
   void _runFilter() {
     List<WeighingRecord> results = _allRecords;
 
-    // Lọc theo Ngày
     if (_selectedDate != null) {
       results = results
-          .where((record) => _isSameDay(record.thoiGianCan, _selectedDate))
+          .where((record) => _isSameDay(record.mixTime, _selectedDate)) // Sửa thành mixTime
           .toList();
     }
 
-    // Lọc theo Từ khóa
     if (_searchText.isNotEmpty) {
       String query = _searchText.toLowerCase();
       results = results.where((record) {
+        // Thêm tìm kiếm theo Số Lô nếu muốn
+        //final bool matchSoLo = record.soLo?.toLowerCase().contains(query) ?? false;
+
         if (_selectedFilterType == 'Tên phôi keo') {
-          return record.tenPhoiKeo.toLowerCase().contains(query);
+          return record.tenPhoiKeo?.toLowerCase().contains(query) ?? false;
         } else if (_selectedFilterType == 'Mã code') {
           return record.maCode.toLowerCase().contains(query);
         }
+        // Thêm tìm kiếm chung (nếu cần bỏ comment)
+        // return (record.tenPhoiKeo?.toLowerCase().contains(query) ?? false) ||
+        //        record.maCode.toLowerCase().contains(query) ||
+        //        matchSoLo;
         return false;
       }).toList();
     }
 
     _filteredRecords = results;
-    notifyListeners(); // Thông báo cho UI cập nhật
+    notifyListeners();
   }
 
-  // --- Hàm cập nhật state từ UI ---
+  // --- Các hàm cập nhật state từ UI (giữ nguyên) ---
   void updateFilterType(String? newType) {
     if (newType != null && _selectedFilterType != newType) {
       _selectedFilterType = newType;
-      _runFilter(); // Lọc lại với type mới
+      _runFilter();
     }
   }
 
@@ -124,7 +148,7 @@ class HistoryController with ChangeNotifier {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
       dateController.text = DateFormat('dd/MM/yyyy').format(newDate);
-      _runFilter(); // Lọc lại với ngày mới
+      _runFilter();
     }
   }
 
@@ -132,7 +156,7 @@ class HistoryController with ChangeNotifier {
     if (_selectedDate != null) {
       _selectedDate = null;
       dateController.clear();
-      _runFilter(); // Lọc lại khi bỏ ngày
+      _runFilter();
     }
   }
 }

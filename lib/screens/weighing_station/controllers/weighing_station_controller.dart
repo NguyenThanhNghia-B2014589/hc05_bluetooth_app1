@@ -1,39 +1,41 @@
 import 'package:flutter/material.dart';
-import '../../../data/weighing_data.dart';
+import '../../../data/weighing_data.dart'; // Import data mới
 import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
 
+// Enum WeighingType vẫn giữ nguyên
 enum WeighingType { nhap, xuat }
 
-// Lớp này sẽ là "bộ não" quản lý logic và trạng thái cho WeighingStationScreen
 class WeighingStationController with ChangeNotifier {
   final BluetoothService bluetoothService;
-  
-  // Dữ liệu mẫu được quản lý bên trong controller
-  final Map<String, Map<String, dynamic>> _mockData = mockWeighingData;
-  final Map<String, Map<String, dynamic>> _mockStockData = mockLastWeighingData;
 
-  // Danh sách các bản ghi, được quản lý bởi controller
-  final List<WeighingRecord> _records = [];
-  List<WeighingRecord> get records => _records; // Cung cấp getter để UI có thể đọc
+  // --- Dữ liệu Mock (giờ lấy từ weighing_data.dart) ---
+  final Map<String, Map<String, dynamic>> _workLSData = mockWorkLSData;
+  final Map<String, Map<String, dynamic>> _workData = mockWorkData;
+  final Map<int, Map<String, dynamic>> _persionalData = mockPersionalData;
 
-  double _selectedPercentage = 1; // Mặc định là 1%
+  // --- State ---
+  final List<WeighingRecord> _records = []; // Danh sách hiển thị trên bảng
+  List<WeighingRecord> get records => _records;
+
+  double _selectedPercentage = 1.0;
+  double get selectedPercentage => _selectedPercentage;
+
+  // _standardWeight giờ là Qty (Khối lượng mẻ/tồn)
   double _standardWeight = 0.0;
+  double get khoiLuongMe => _standardWeight; // Giữ getter cũ cho UI
+
   double _minWeight = 0.0;
   double _maxWeight = 0.0;
-
-  // Cung cấp getters để UI có thể đọc
-  double get selectedPercentage => _selectedPercentage;
   double get minWeight => _minWeight;
   double get maxWeight => _maxWeight;
-  double get khoiLuongMe => _standardWeight;
+
+  WeighingType _selectedWeighingType = WeighingType.nhap;
+  WeighingType get selectedWeighingType => _selectedWeighingType;
 
   WeighingStationController({required this.bluetoothService});
 
-  WeighingType _selectedWeighingType = WeighingType.nhap; // Mặc định là Cân nhập
-  WeighingType get selectedWeighingType => _selectedWeighingType;
-
-  // --- HÀM TÍNH TOÁN MIN/MAX ---
+  // --- Hàm tính Min/Max (giữ nguyên) ---
   void _calculateMinMax() {
     if (_standardWeight == 0) {
       _minWeight = 0.0;
@@ -45,47 +47,27 @@ class WeighingStationController with ChangeNotifier {
     }
   }
 
-  // --- HÀM CẬP NHẬT KHI THAY ĐỔI DROPDOWN ---
+  // --- Hàm cập nhật % (giữ nguyên) ---
   void updatePercentage(double newPercentage) {
     _selectedPercentage = newPercentage;
-    _calculateMinMax(); // Tính toán lại với % mới
-    notifyListeners(); // Cập nhật UI
+    _calculateMinMax();
+    notifyListeners();
   }
 
-  // --- HÀM CẬP NHẬT KHI THAY ĐỔI LOẠI CÂN ---
+  // --- Hàm cập nhật Loại cân (giữ nguyên) ---
   void updateWeighingType(WeighingType? newType) {
     if (newType != null) {
       _selectedWeighingType = newType;
-      notifyListeners(); // Cập nhật UI
+      // Không cần notifyListeners vì UI chỉ thay đổi khi scan mã mới
     }
   }
 
-  // --- TOÀN BỘ LOGIC XỬ LÝ SCAN ĐƯỢC CHUYỂN VÀO ĐÂY ---
+  // --- THAY THẾ TOÀN BỘ HÀM handleScan ---
   void handleScan(BuildContext context, String code) {
-    // 1. Quyết định xem nên lấy data từ đâu
-    Map<String, dynamic>? data;
-    double? standardWeightValue; // Khối lượng mẻ (nhập) hoặc tồn (xuất)
+    // 1. Tìm bản ghi trong _VML_WorkLS
+    final workLSItem = _workLSData[code];
 
-    if (_selectedWeighingType == WeighingType.nhap) {
-      // CÂN NHẬP: Lấy data từ mockData (target)
-      data = _mockData[code];
-      if (data != null) {
-        standardWeightValue = data['khoiLuongMe'];
-      }
-    } else {
-      // CÂN XUẤT: Lấy data từ mockStockData (tồn kho)
-      // (Giả sử 2 mock data dùng chung key '123', '456'...)
-      data = _mockStockData[code]; 
-      
-      if (data != null) {
-        // Lấy khối lượng tồn (khoiLuongSauCan) làm khối lượng tiêu chuẩn
-        //standardWeightValue = data['khoiLuongSauCan']; // Tạm thời chưa dùng
-        standardWeightValue = data['khoiLuongMe'];
-      }
-    }
-
-    // 2. Kiểm tra data
-    if (data == null || standardWeightValue == null) {
+    if (workLSItem == null) {
       NotificationService().showToast(
         context: context,
         message: 'Mã "$code" không hợp lệ!',
@@ -94,67 +76,103 @@ class WeighingStationController with ChangeNotifier {
       return;
     }
 
+    // 2. Lấy thông tin từ _VML_WorkLS
+    final String ovNO = workLSItem['OVNO'];
+    final int package = workLSItem['package'];
+    final int mUserID = workLSItem['MUserID'];
+    final double qtyValue = workLSItem['Qty']; // Đây là khối lượng mẻ/tồn
+
+    // 3. Tìm thông tin trong _VML_Work (dùng ovNO)
+    final workItem = _workData[ovNO];
+    if (workItem == null) {
+       NotificationService().showToast(
+        context: context,
+        message: 'Lỗi: Không tìm thấy thông tin công việc cho OVNO "$ovNO"!',
+        type: ToastType.error,
+      );
+      return;
+    }
+    final String tenPhoiKeo = workItem['FormulaF'];
+    final String soMay = workItem['soMay'];
+
+    // 4. Tìm thông tin trong _VML_Persional (dùng mUserID)
+    final persionalItem = _persionalData[mUserID];
+    final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
+
+    // 5. Cập nhật _standardWeight và tính Min/Max
+    // Nếu là Cân Xuất, Qty lấy từ WorkLS chính là khối lượng tồn
+    // Nếu là Cân Nhập, Qty lấy từ WorkLS cũng là khối lượng mẻ cần cân
+    _standardWeight = qtyValue;
+    _calculateMinMax();
+
+    // 6. Tạo bản ghi mới (chưa có thời gian và khối lượng cân)
+    final newRecord = WeighingRecord(
+      maCode: code,
+      ovNO: ovNO,
+      package: package,
+      mUserID: mUserID,
+      qty: _standardWeight, // Lưu khối lượng mẻ/tồn
+      // Bổ sung thông tin đã tra cứu
+      tenPhoiKeo: tenPhoiKeo,
+      soMay: soMay,
+      nguoiThaoTac: nguoiThaoTac,
+      soLo: package,
+      // isSuccess và realQty sẽ được cập nhật khi hoàn tất
+      // loai sẽ được xác định khi hoàn tất
+    );
+
+    // 7. Thêm vào danh sách hiển thị và giới hạn 5 hàng
+    _records.insert(0, newRecord);
+    if (_records.length > 5) {
+      _records.removeLast();
+    }
+
+    notifyListeners(); // Cập nhật bảng
+
     NotificationService().showToast(
       context: context,
       message: 'Scan thành công!',
       type: ToastType.success,
     );
-
-    // 3. Gán khối lượng mẻ/tồn
-    _standardWeight = standardWeightValue;
-    _calculateMinMax(); // Tính min/max dựa trên khối lượng này
-
-    // 4. Tạo record
-    final newRecord = WeighingRecord(
-      maCode: code,
-      tenPhoiKeo: data['tenPhoiKeo']!,
-      soLo: data['soLo']!,
-      soMay: data['soMay']!,
-      khoiLuongMe: _standardWeight, // Gán _standardWeight (đã được xử lý)
-      nguoiThaoTac: data['nguoiThaoTac']!,
-    );
-    
-    _records.insert(0, newRecord);
-    if (_records.length > 4) {
-      _records.removeLast();
-    }
-    
-    notifyListeners();
   }
+  // --- KẾT THÚC THAY THẾ ---
 
-  // Xử lý logic khi nhấn nút "Hoàn tất".
-  // Trả về true nếu thành công, false nếu thất bại.
+  // --- THAY THẾ TOÀN BỘ HÀM completeCurrentWeighing ---
   bool completeCurrentWeighing(double currentWeight) {
-    // 1. Kiểm tra xem có bản ghi nào để "hoàn tất" không
     if (_records.isEmpty) {
       return false; // Không có gì để hoàn tất
     }
+    // Lấy bản ghi đang chờ (bản ghi đầu tiên)
+    final currentRecord = _records[0];
 
-    // 2. Kiểm tra xem bản ghi mới nhất đã hoàn tất chưa
-    if (_records[0].isSuccess == true) {
-      return true; // Đã hoàn tất thành công rồi
+    // Kiểm tra xem đã hoàn tất chưa
+    if (currentRecord.isSuccess == true) {
+      return true; // Đã hoàn tất rồi
     }
 
-    // 3. Kiểm tra trọng lượng có nằm trong phạm vi cho phép không
+    // Kiểm tra trọng lượng
     final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
 
     if (isInRange) {
-      // Nếu ĐẠT: Cập nhật bản ghi
-      _records[0].isSuccess = true;
-      // Gán thời gian khi hoàn tất cân
-      _records[0].thoiGianCan = DateTime.now();
-      // Gán khối lượng đã cân
-      _records[0].khoiLuongDaCan = currentWeight;
-      // 5. Reset khối lượng mẻ về 0
+      // Cập nhật bản ghi
+      currentRecord.isSuccess = true;
+      currentRecord.mixTime = DateTime.now(); // Lưu thời gian hoàn tất
+      currentRecord.realQty = currentWeight; // Lưu khối lượng cân thực tế
+      currentRecord.loai = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat'; // Lưu loại
+
+      // TODO: Ở đây bạn cần có logic để LƯU bản ghi này vào database
+      // Ví dụ: await databaseService.saveRecord(currentRecord);
+      // Hoặc cập nhật lại mockWorkLSData nếu chỉ dùng mock
+
+      // Reset state
       _standardWeight = 0.0;
-      // 6. Tính toán lại min/max (sẽ về 0)
       _calculateMinMax();
-      // 7. Báo cho TOÀN BỘ UI cập nhật
-      notifyListeners(); 
+      notifyListeners(); // Cập nhật UI (bảng đổi màu xanh, nút hoàn tất reset)
       return true;
     } else {
-      // 8. Nếu KHÔNG ĐẠT: Không làm gì cả, trả về false
+      // Không đạt
       return false;
     }
   }
+  // --- KẾT THÚC THAY THẾ ---
 }

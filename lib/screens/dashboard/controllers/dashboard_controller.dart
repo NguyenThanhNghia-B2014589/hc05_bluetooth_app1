@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../../data/weighing_data.dart';
+import '../../../data/weighing_data.dart'; // Import data mới
 import '../widgets/hourly_weighing_chart.dart'; // Import ChartData
 
 class DashboardController with ChangeNotifier {
+  // --- Dữ liệu Mock ---
+  final Map<String, Map<String, dynamic>> _workLSData = mockWorkLSData;
+  final Map<String, Map<String, dynamic>> _workData = mockWorkData;
+  final Map<int, Map<String, dynamic>> _persionalData = mockPersionalData;
+
   // --- State ---
-  List<WeighingRecord> _allRecords = [];
+  List<WeighingRecord> _allRecords = []; // Danh sách đầy đủ (đã xử lý)
   List<ChartData> _chartData = []; // Data for Bar Chart
   double _totalNhap = 0.0; // Data for Pie Chart
   double _totalXuat = 0.0;
@@ -17,59 +22,63 @@ class DashboardController with ChangeNotifier {
   DateTime get selectedDate => _selectedDate;
 
   DashboardController() {
-    _loadDataFromMock(); // Load totals for Pie Chart
-    _processDataForChart(_selectedDate); // Process data for Bar Chart for the initial date
+    _loadDataFromMock(); // Tải và tính tổng (Pie Chart)
+    _processDataForChart(_selectedDate); // Xử lý data ban đầu (Bar Chart)
   }
 
-  // --- Logic Functions (Moved from DashboardScreen) ---
-
+  // --- THAY THẾ HÀM _loadDataFromMock ---
   void _loadDataFromMock() {
-    DateTime parseMockDate(String dateStr) {
-      try {
-        final parts = dateStr.split(' ');
-        final timeParts = parts[0].split(':');
-        final dateParts = parts[1].split('/');
-        return DateTime(
-          int.parse(dateParts[2]), int.parse(dateParts[1]), int.parse(dateParts[0]),
-          int.parse(timeParts[0]), int.parse(timeParts[1]),
-        );
-      } catch (e) {
-        return DateTime(2000); // Trả về ngày mặc định nếu lỗi
-      }
-    }
-
-    _allRecords = mockLastWeighingData.entries.map((entry) {
-      final data = entry.value;
-      return WeighingRecord(
-        maCode: entry.key,
-        tenPhoiKeo: data['tenPhoiKeo']!,
-        soLo: data['soLo']!,
-        soMay: data['soMay']!,
-        nguoiThaoTac: data['nguoiThaoTac']!,
-        thoiGianCan: parseMockDate(data['thoiGianCan']!),
-        khoiLuongMe: data['khoiLuongMe']!,
-        khoiLuongDaCan: data['khoiLuongSauCan']!,
-        loai: data['loai'],
-      );
-    }).toList();
+    _allRecords = []; // Xóa list cũ
     double dayNhap = 0.0;
     double dayXuat = 0.0;
 
-    for (final record in _allRecords) { // Duyệt qua TẤT CẢ record
-      final amount = record.khoiLuongDaCan ?? 0.0;
-      if (record.loai == 'nhap') {
-        dayNhap += amount;
-      } else if (record.loai == 'xuat') {
-        dayXuat += amount;
-      }
-    }
-    
-    // 2. Cập nhật state cho Biểu đồ tròn (chỉ 1 lần)
-      _totalNhap = dayNhap;
-      _totalXuat = dayXuat;
-    
-  }
+    _workLSData.forEach((maCode, workLSItem) {
+      final dynamic mixTimeValue = workLSItem['MixTime'];
+      final DateTime? mixTime = parseMixTime(mixTimeValue); // Dùng hàm helper
 
+      // Chỉ xử lý các bản ghi đã hoàn tất (có MixTime)
+      if (mixTime != null) {
+        final String ovNO = workLSItem['OVNO'];
+        final int package = workLSItem['package'];
+        final int mUserID = workLSItem['MUserID'];
+        final double qtyValue = workLSItem['Qty'];
+        final double? realQtyValue = workLSItem['RKQty'];
+        final String? loaiValue = workLSItem['loai'];
+
+        // Tra cứu
+        final workItem = _workData[ovNO];
+        final persionalItem = _persionalData[mUserID];
+        final String tenPhoiKeo = workItem?['FormulaF'] ?? 'Không rõ';
+        final String soMay = workItem?['soMay'] ?? 'N/A';
+        final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
+
+        // Tạo Record
+        final record = WeighingRecord(
+          maCode: maCode, ovNO: ovNO, package: package, mUserID: mUserID,
+          qty: qtyValue, mixTime: mixTime, realQty: realQtyValue,
+          isSuccess: true, loai: loaiValue, tenPhoiKeo: tenPhoiKeo,
+          soMay: soMay, nguoiThaoTac: nguoiThaoTac, soLo: package, // Gán package vào soLo
+        );
+        _allRecords.add(record);
+
+        // Tính tổng cho Pie Chart
+        final amount = record.realQty ?? 0.0; // Dùng realQty (đã cân)
+        if (record.loai == 'nhap') {
+          dayNhap += amount;
+        } else if (record.loai == 'xuat') {
+          dayXuat += amount;
+        }
+      }
+    });
+
+    // Cập nhật state cho Pie Chart
+    _totalNhap = dayNhap;
+    _totalXuat = dayXuat;
+    // Không cần notifyListeners ở đây
+  }
+  // --- KẾT THÚC THAY THẾ ---
+
+  // --- Hàm _processDataForChart (giữ nguyên logic, chỉ cần kiểm tra tên trường) ---
   void _processDataForChart(DateTime date) {
       final ca1Start = DateTime(date.year, date.month, date.day, 6, 0);
       final ca2Start = DateTime(date.year, date.month, date.day, 14, 0);
@@ -82,16 +91,17 @@ class DashboardController with ChangeNotifier {
         'Ca 3': {'nhap': 0.0, 'xuat': 0.0},
       };
 
+      // Dùng _allRecords đã được load sẵn
       final recordsForDay = _allRecords.where((record) {
-         if (record.thoiGianCan == null) return false;
-         final thoiGian = record.thoiGianCan!;
+         if (record.mixTime == null) return false; // Dùng mixTime
+         final thoiGian = record.mixTime!;
          return (thoiGian.isAtSameMomentAs(ca1Start) || thoiGian.isAfter(ca1Start)) &&
                 thoiGian.isBefore(endOfDay);
       }).toList();
 
       for (final record in recordsForDay) {
-        final thoiGian = record.thoiGianCan!;
-        final amount = record.khoiLuongDaCan ?? 0.0;
+        final thoiGian = record.mixTime!;
+        final amount = record.realQty ?? 0.0; // Dùng realQty (đã cân)
         final type = (record.loai == 'nhap') ? 'nhap' : 'xuat';
 
         // So sánh thời gian để xếp vào ca
@@ -112,15 +122,19 @@ class DashboardController with ChangeNotifier {
         ChartData('Ca 2', shiftData['Ca 2']!['nhap']!, shiftData['Ca 2']!['xuat']!),
         ChartData('Ca 3', shiftData['Ca 3']!['nhap']!, shiftData['Ca 3']!['xuat']!),
       ];
-      notifyListeners(); // Notify UI to update Bar Chart
+      notifyListeners(); // Cập nhật Bar Chart
   }
 
-  // --- Method called by UI when date changes ---
+  // --- Hàm updateSelectedDate (giữ nguyên) ---
   void updateSelectedDate(DateTime newDate) {
-    if (_selectedDate != newDate) {
+    // Chỉ cập nhật và xử lý lại nếu ngày thay đổi
+    // và ngày mới khác ngày hiện tại (đã làm tròn về ngày)
+    final currentDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final newDateOnly = DateTime(newDate.year, newDate.month, newDate.day);
+
+    if (currentDateOnly != newDateOnly) {
       _selectedDate = newDate;
-      _processDataForChart(newDate); // Re-process data for the Bar Chart
-      // No need to call notifyListeners here as _processDataForChart already does
+      _processDataForChart(newDate); // Chỉ xử lý lại Bar Chart
     }
   }
 }
