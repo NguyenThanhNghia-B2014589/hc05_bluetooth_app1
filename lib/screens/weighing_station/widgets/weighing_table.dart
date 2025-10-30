@@ -5,17 +5,22 @@ import '../controllers/weighing_station_controller.dart'; // Giữ import này
 class WeighingTable extends StatelessWidget {
   final List<WeighingRecord> records;
   final WeighingType weighingType;
+  final String? activeOVNO;
+  final String? activeMemo;
 
   const WeighingTable({
     super.key,
     required this.records,
     required this.weighingType,
+    this.activeOVNO,
+    this.activeMemo,
   });
 
   @override
   Widget build(BuildContext context) {
     const headerStyle = TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 20);
     const cellStyle = TextStyle(fontSize: 20);
+    const summaryStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87);
 
     Widget verticalDivider() => Container(width: 1, color: Colors.white.withValues(alpha: 1));
     Widget headerCell(String title, int flex) 
@@ -85,7 +90,7 @@ class WeighingTable extends StatelessWidget {
                 // Chọn màu dựa trên trạng thái (isSuccess)
                 Color rowColor;
                 if (record.isSuccess == true) {
-                  rowColor = const Color.fromARGB(255, 202, 240, 206); // Màu xanh lá nếu thành công
+                  rowColor = const Color.fromARGB(255, 182, 240, 188); // Màu xanh lá nếu thành công
                 } else {
                   rowColor = index.isEven ? Colors.white : const Color.fromARGB(255, 231, 231, 231); // Màu sọc vằn
                 }
@@ -125,6 +130,32 @@ class WeighingTable extends StatelessWidget {
                 );
               },
             ),
+            if (activeOVNO != null) // Only show if there's an active OVNO
+          Container(
+            color: const Color.fromARGB(255, 218, 221, 40), // Light green background
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Row(
+              children: [
+                Text('OVNO : $activeOVNO', style: summaryStyle),
+                const Spacer(flex: 1),
+                const Text('Số lô tổng: ---', style: summaryStyle),
+                const Spacer(flex: 1),
+                const Text('Nhập: --- kg', style: summaryStyle),
+                const Spacer(flex: 1),
+                const Text('Xuất: --- kg', style: summaryStyle),
+                const Spacer(flex: 1),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Memo: ${activeMemo ?? ''}', // Display Memo
+                    style: summaryStyle,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

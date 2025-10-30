@@ -8,6 +8,12 @@ enum WeighingType { nhap, xuat }
 
 class WeighingStationController with ChangeNotifier {
   final BluetoothService bluetoothService;
+  
+String? _activeOVNO; // To store the OVNO of the current scan group
+String? _activeMemo; // To store the Memo for the active OVNO
+String? get activeOVNO => _activeOVNO; // Getter for UI
+String? get activeMemo => _activeMemo; // Getter for UI
+
 
   // --- Dữ liệu Mock (giờ lấy từ weighing_data.dart) ---
   final Map<String, Map<String, dynamic>> _workLSData = mockWorkLSData;
@@ -92,6 +98,15 @@ class WeighingStationController with ChangeNotifier {
       );
       return;
     }
+
+    if (_activeOVNO == null || _activeOVNO != ovNO) {
+      _activeOVNO = ovNO;
+      // Look up Memo from mockWorkData
+      final workItem = _workData[ovNO];
+      _activeMemo = workItem?['Memo'] as String?;
+      // No need to notifyListeners here, it happens later
+    }
+
     final String tenPhoiKeo = workItem['FormulaF'];
     final String soMay = workItem['soMay'];
 
@@ -123,7 +138,7 @@ class WeighingStationController with ChangeNotifier {
 
     // 7. Thêm vào danh sách hiển thị và giới hạn 5 hàng
     _records.insert(0, newRecord);
-    if (_records.length > 5) {
+    if (_records.length > 2) {
       _records.removeLast();
     }
 
@@ -163,6 +178,11 @@ class WeighingStationController with ChangeNotifier {
       // TODO: Ở đây bạn cần có logic để LƯU bản ghi này vào database
       // Ví dụ: await databaseService.saveRecord(currentRecord);
       // Hoặc cập nhật lại mockWorkLSData nếu chỉ dùng mock
+
+      // After successfully completing, clear the active group info
+      // _activeOVNO = null;
+      // _activeMemo = null;
+      // (Commented out for now, keep showing summary until next scan)
 
       // Reset state
       _standardWeight = 0.0;

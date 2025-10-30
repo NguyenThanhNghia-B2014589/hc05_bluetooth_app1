@@ -147,7 +147,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                     const SizedBox(height: 20),
                     Row(
                         children: [
-                              // 1. Dropdown (giờ đã nhỏ lại)
+                              // Dropdown
                               _buildWeighingTypeDropdown(), 
                               
                               const SizedBox(width: 16), // Khoảng cách giữa 2 widget
@@ -217,6 +217,8 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           WeighingTable(
           records: _controller.records,
           weighingType: _controller.selectedWeighingType, // <-- TRUYỀN TYPE VÀO
+          activeOVNO: _controller.activeOVNO,
+          activeMemo: _controller.activeMemo,
         ),
           const SizedBox(height: 24),
         ],
