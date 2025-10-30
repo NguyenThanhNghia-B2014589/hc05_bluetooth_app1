@@ -89,7 +89,7 @@ class HistoryController with ChangeNotifier {
         ovNO: ovNO,
         package: package,
         mUserID: mUserID,
-        qty: qtyValue, // KL Mẻ/Tồn
+        qtys: qtyValue, // KL Mẻ/Tồn
         mixTime: mixTime, // Thời gian cân (từ History)
         realQty: realQtyValue, // KL Đã Cân (từ History)
         isSuccess: true, // Lịch sử mặc định là thành công

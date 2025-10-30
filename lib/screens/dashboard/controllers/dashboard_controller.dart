@@ -57,7 +57,7 @@ class DashboardController with ChangeNotifier {
         // Create a record with available data, marking others as unknown.
         _allRecords.add(WeighingRecord(
             maCode: maCode, ovNO: 'N/A', package: 0, mUserID: 'N/A',
-            qty: 0.0, // Target/Stock unknown
+            qtys: 0.0, // Target/Stock unknown
             mixTime: mixTime, realQty: realQtyValue, isSuccess: true,
             loai: loaiValue, soLo: 0, tenPhoiKeo: 'N/A', soMay: 'N/A', nguoiThaoTac: 'N/A',
         ));
@@ -83,7 +83,7 @@ class DashboardController with ChangeNotifier {
           ovNO: ovNO,
           package: package,
           mUserID: mUserID,
-          qty: qtyValue, // Target/Stock Qty
+          qtys: qtyValue, // Target/Stock Qty
           mixTime: mixTime, // Actual weigh time from History
           realQty: realQtyValue, // Actual weigh amount from History
           isSuccess: true, // History is assumed successful

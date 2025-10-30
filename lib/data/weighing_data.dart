@@ -43,7 +43,7 @@ class WeighingRecord {
   final int package; // package
   final String mUserID; // MUserID
   DateTime? mixTime; // MixTime (Thời gian cân thực tế)
-  final double qty; // Qty (Khối lượng mẻ/tồn - theo logic mới)
+  final double qtys; // Qty (Khối lượng mẻ/tồn - theo logic mới)
   double? realQty; // RKQty (Khối lượng cân thực tế)
   bool? isSuccess; // Trạng thái thành công (tự thêm)
   String? loai; // Loại nhập/xuất (từ mock history)
@@ -59,7 +59,7 @@ class WeighingRecord {
     required this.ovNO,
     required this.package,
     required this.mUserID,
-    required this.qty,
+    required this.qtys,
     required this.soLo,
     this.mixTime,
     this.realQty,

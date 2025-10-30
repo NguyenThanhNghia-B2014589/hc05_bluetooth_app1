@@ -121,7 +121,7 @@ class HistoryTable extends StatelessWidget {
                                 dataCell(record.soMay, 3),
                                 dataCell(record.nguoiThaoTac ?? 'N/A', 4, align: TextAlign.left), // Căn trái
                                 dataCell(formatDateTime(record.mixTime), 4),
-                                dataCell(record.qty.toStringAsFixed(3), 3, align: TextAlign.right), // Căn phải
+                                dataCell(record.qtys.toStringAsFixed(3), 3, align: TextAlign.right), // Căn phải
                                 dataCell(record.realQty?.toStringAsFixed(3) ?? '---', 3, align: TextAlign.right), // Căn phải
                                 dataCell(record.loai ?? 'N/A', 3),
                               ],

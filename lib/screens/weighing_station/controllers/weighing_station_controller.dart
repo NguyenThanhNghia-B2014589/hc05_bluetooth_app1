@@ -103,7 +103,7 @@ class WeighingStationController with ChangeNotifier {
         _activeMemo = data['memo'];
       }
 
-      _standardWeight = (data['qty'] as num).toDouble();
+      _standardWeight = (data['qtys'] as num).toDouble();
       _calculateMinMax();
 
       final newRecord = WeighingRecord(
@@ -111,7 +111,7 @@ class WeighingStationController with ChangeNotifier {
         ovNO: data['ovNO'],
         package: data['package'],
         mUserID: data['mUserID'],
-        qty: (data['qty'] as num).toDouble(),
+        qtys: (data['qtys'] as num).toDouble(),
         soLo: data['soLo'],
         tenPhoiKeo: data['tenPhoiKeo'],
         soMay: data['soMay'],
