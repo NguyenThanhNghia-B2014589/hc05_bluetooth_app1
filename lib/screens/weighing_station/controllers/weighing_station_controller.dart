@@ -1,47 +1,49 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import '../../../data/weighing_data.dart'; // Import data mới
+import '../../../data/weighing_data.dart';
 import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Enum WeighingType vẫn giữ nguyên
 enum WeighingType { nhap, xuat }
 
 class WeighingStationController with ChangeNotifier {
   final BluetoothService bluetoothService;
-  
-String? _activeOVNO; // To store the OVNO of the current scan group
-String? _activeMemo; // To store the Memo for the active OVNO
-String? get activeOVNO => _activeOVNO; // Getter for UI
-String? get activeMemo => _activeMemo; // Getter for UI
 
+  // --- ĐỊNH NGHĨA IP CỦA BACKEND ---
+  // (Dùng 10.0.2.2 nếu chạy trên Android Emulator)
+  // (Dùng IP Mạng LAN của máy tính nếu chạy trên điện thoại thật, vd: 'http://192.168.1.10:3636')
+  final String _apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
 
-  // --- Dữ liệu Mock (giờ lấy từ weighing_data.dart) ---
-  final Map<String, Map<String, dynamic>> _workLSData = mockWorkLSData;
-  final Map<String, Map<String, dynamic>> _workData = mockWorkData;
-  final Map<int, Map<String, dynamic>> _persionalData = mockPersionalData;
+  String? _activeOVNO;
+  String? _activeMemo;
+  String? get activeOVNO => _activeOVNO;
+  String? get activeMemo => _activeMemo;
 
   // --- State ---
-  final List<WeighingRecord> _records = []; // Danh sách hiển thị trên bảng
+  final List<WeighingRecord> _records = [];
   List<WeighingRecord> get records => _records;
 
   double _selectedPercentage = 1.0;
   double get selectedPercentage => _selectedPercentage;
-
-  // _standardWeight giờ là Qty (Khối lượng mẻ/tồn)
   double _standardWeight = 0.0;
-  double get khoiLuongMe => _standardWeight; // Giữ getter cũ cho UI
-
+  double get khoiLuongMe => _standardWeight;
   double _minWeight = 0.0;
   double _maxWeight = 0.0;
   double get minWeight => _minWeight;
   double get maxWeight => _maxWeight;
-
   WeighingType _selectedWeighingType = WeighingType.nhap;
   WeighingType get selectedWeighingType => _selectedWeighingType;
 
+  // --- HẾT PHẦN STATE ---
+
   WeighingStationController({required this.bluetoothService});
 
-  // --- Hàm tính Min/Max (giữ nguyên) ---
+  // (Hàm _calculateMinMax, updatePercentage, updateWeighingType giữ nguyên)
   void _calculateMinMax() {
     if (_standardWeight == 0) {
       _minWeight = 0.0;
@@ -53,14 +55,12 @@ String? get activeMemo => _activeMemo; // Getter for UI
     }
   }
 
-  // --- Hàm cập nhật % (giữ nguyên) ---
+  // --- Hàm cập nhật % ---
   void updatePercentage(double newPercentage) {
     _selectedPercentage = newPercentage;
     _calculateMinMax();
     notifyListeners();
   }
-
-  // --- Hàm cập nhật Loại cân (giữ nguyên) ---
   void updateWeighingType(WeighingType? newType) {
     if (newType != null) {
       _selectedWeighingType = newType;
@@ -68,92 +68,127 @@ String? get activeMemo => _activeMemo; // Getter for UI
     }
   }
 
-  // --- THAY THẾ TOÀN BỘ HÀM handleScan ---
-  void handleScan(BuildContext context, String code) {
-    // 1. Tìm bản ghi trong _VML_WorkLS
-    final workLSItem = _workLSData[code];
 
-    if (workLSItem == null) {
+  // --- HÀM handleScan ---
+  Future<void> handleScan(BuildContext context, String code) async {
+  try {
+    final url = Uri.parse('$_apiBaseUrl/api/scan/$code');
+    
+    // Log để debug
+    if (kDebugMode) {
+      print('🔍 Attempting to connect to: $url');
+    }
+    
+    final response = await http.get(url).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        throw TimeoutException('Connection timeout after 10 seconds');
+      },
+    );
+    
+    if (kDebugMode) {
+      print('📡 Response Status: ${response.statusCode}');
+    }
+    if (kDebugMode) {
+      print('📦 Response Body: ${response.body}');
+    }
+    
+    if (!context.mounted) return;
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      
+      if (_activeOVNO == null || _activeOVNO != data['ovNO']) {
+        _activeOVNO = data['ovNO'];
+        _activeMemo = data['memo'];
+      }
+
+      _standardWeight = (data['qty'] as num).toDouble();
+      _calculateMinMax();
+
+      final newRecord = WeighingRecord(
+        maCode: data['maCode'],
+        ovNO: data['ovNO'],
+        package: data['package'],
+        mUserID: data['mUserID'],
+        qty: (data['qty'] as num).toDouble(),
+        soLo: data['soLo'],
+        tenPhoiKeo: data['tenPhoiKeo'],
+        soMay: data['soMay'],
+        nguoiThaoTac: data['nguoiThaoTac'],
+      );
+
+      _records.insert(0, newRecord);
+      if (_records.length > 5) {
+        _records.removeLast();
+      }
+      
       NotificationService().showToast(
         context: context,
-        message: 'Mã "$code" không hợp lệ!',
-        type: ToastType.error,
+        message: 'Scan thành công!',
+        type: ToastType.success,
       );
-      return;
-    }
-
-    // 2. Lấy thông tin từ _VML_WorkLS
-    final String ovNO = workLSItem['OVNO'];
-    final int package = workLSItem['package'];
-    final int mUserID = workLSItem['MUserID'];
-    final double qtyValue = workLSItem['Qty']; // Đây là khối lượng mẻ/tồn
-
-    // 3. Tìm thông tin trong _VML_Work (dùng ovNO)
-    final workItem = _workData[ovNO];
-    if (workItem == null) {
-       NotificationService().showToast(
+    
+    } else if (response.statusCode == 404) {
+      final errorData = json.decode(response.body);
+      NotificationService().showToast(
         context: context,
-        message: 'Lỗi: Không tìm thấy thông tin công việc cho OVNO "$ovNO"!',
+        message: errorData['message'] ?? 'Không tìm thấy mã',
         type: ToastType.error,
       );
-      return;
+    } else {
+      NotificationService().showToast(
+        context: context,
+        message: 'Lỗi server: ${response.statusCode}',
+        type: ToastType.error,
+      );
     }
 
-    if (_activeOVNO == null || _activeOVNO != ovNO) {
-      _activeOVNO = ovNO;
-      // Look up Memo from mockWorkData
-      final workItem = _workData[ovNO];
-      _activeMemo = workItem?['Memo'] as String?;
-      // No need to notifyListeners here, it happens later
+  } on TimeoutException catch (e) {
+    if (kDebugMode) {
+      print('⏱️ Timeout: $e');
     }
-
-    final String tenPhoiKeo = workItem['FormulaF'];
-    final String soMay = workItem['soMay'];
-
-    // 4. Tìm thông tin trong _VML_Persional (dùng mUserID)
-    final persionalItem = _persionalData[mUserID];
-    final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
-
-    // 5. Cập nhật _standardWeight và tính Min/Max
-    // Nếu là Cân Xuất, Qty lấy từ WorkLS chính là khối lượng tồn
-    // Nếu là Cân Nhập, Qty lấy từ WorkLS cũng là khối lượng mẻ cần cân
-    _standardWeight = qtyValue;
-    _calculateMinMax();
-
-    // 6. Tạo bản ghi mới (chưa có thời gian và khối lượng cân)
-    final newRecord = WeighingRecord(
-      maCode: code,
-      ovNO: ovNO,
-      package: package,
-      mUserID: mUserID,
-      qty: _standardWeight, // Lưu khối lượng mẻ/tồn
-      // Bổ sung thông tin đã tra cứu
-      tenPhoiKeo: tenPhoiKeo,
-      soMay: soMay,
-      nguoiThaoTac: nguoiThaoTac,
-      soLo: package,
-      // isSuccess và realQty sẽ được cập nhật khi hoàn tất
-      // loai sẽ được xác định khi hoàn tất
-    );
-
-    // 7. Thêm vào danh sách hiển thị và giới hạn 5 hàng
-    _records.insert(0, newRecord);
-    if (_records.length > 2) {
-      _records.removeLast();
-    }
-
-    notifyListeners(); // Cập nhật bảng
-
+    if (!context.mounted) return;
     NotificationService().showToast(
       context: context,
-      message: 'Scan thành công!',
-      type: ToastType.success,
+      message: 'Lỗi: Hết thời gian chờ kết nối!',
+      type: ToastType.error,
     );
+  } on http.ClientException catch (e) {
+    if (kDebugMode) {
+      print('🌐 Client Exception: $e');
+    }
+    if (!context.mounted) return;
+    NotificationService().showToast(
+      context: context,
+      message: 'Lỗi kết nối: Kiểm tra WiFi và địa chỉ IP server.',
+      type: ToastType.error,
+    );
+  } on SocketException catch (e) {
+    if (kDebugMode) {
+      print('🔌 Socket Exception: $e');
+    }
+    if (!context.mounted) return;
+    NotificationService().showToast(
+      context: context,
+      message: 'Không thể kết nối: Đảm bảo điện thoại và máy tính cùng mạng WiFi.',
+      type: ToastType.error,
+    );
+  } catch (e) {
+    if (kDebugMode) {
+      print('❌ Unknown Error: $e');
+    }
+    if (!context.mounted) return;
+    NotificationService().showToast(
+      context: context,
+      message: 'Lỗi không xác định: $e',
+      type: ToastType.error,
+    );
+  } finally {
+    notifyListeners();
   }
-  // --- KẾT THÚC THAY THẾ ---
-
-  // --- THAY THẾ TOÀN BỘ HÀM completeCurrentWeighing ---
-  bool completeCurrentWeighing(double currentWeight) {
+}
+bool completeCurrentWeighing(double currentWeight) {
     if (_records.isEmpty) {
       return false; // Không có gì để hoàn tất
     }
@@ -194,5 +229,4 @@ String? get activeMemo => _activeMemo; // Getter for UI
       return false;
     }
   }
-  // --- KẾT THÚC THAY THẾ ---
 }

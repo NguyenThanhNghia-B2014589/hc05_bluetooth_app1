@@ -102,7 +102,7 @@ class WeighingTable extends StatelessWidget {
                       children: [
                         dataCell(record.tenPhoiKeo ?? 'N/A', 3), // FormulaF
                         dataCell(record.soLo.toString(), 2), // package
-                        dataCell(record.soMay ?? 'N/A', 2), // soMay
+                        dataCell(record.soMay, 2), // soMay
                         dataCell(record.nguoiThaoTac ?? 'N/A', 3), // UerName
                         dataCell(record.qty.toStringAsFixed(3), 3), // Mẻ/Tồn
                         dataCell(record.realQty?.toStringAsFixed(3) ?? '---', 3), // Đã Cân

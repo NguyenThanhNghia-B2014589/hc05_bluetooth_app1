@@ -41,7 +41,7 @@ class WeighingRecord {
   final String maCode; // QRCode
   final String ovNO; // OVNO
   final int package; // package
-  final int mUserID; // MUserID
+  final String mUserID; // MUserID
   DateTime? mixTime; // MixTime (Thời gian cân thực tế)
   final double qty; // Qty (Khối lượng mẻ/tồn - theo logic mới)
   double? realQty; // RKQty (Khối lượng cân thực tế)
@@ -51,7 +51,7 @@ class WeighingRecord {
 
   // --- Thêm các trường từ bảng khác (để tiện truy cập) ---
   String? tenPhoiKeo; // FormulaF (từ _VML_Work)
-  String? soMay; // soMay (từ _VML_Work)
+  final String soMay; // soMay (từ _VML_Work)
   String? nguoiThaoTac; // UerName (từ _VML_Persional)
 
   WeighingRecord({
@@ -67,7 +67,7 @@ class WeighingRecord {
     this.loai,
     // Các trường bổ sung
     this.tenPhoiKeo,
-    this.soMay,
+    required this.soMay,
     this.nguoiThaoTac,
   });
 }

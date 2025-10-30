@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../data/weighing_data.dart'; // Import data mới
+import '../../../data/weighing_data.dart';
+import 'package:flutter/foundation.dart';
 
 class HistoryController with ChangeNotifier {
   // --- Controllers cho UI ---
@@ -63,12 +64,14 @@ class HistoryController with ChangeNotifier {
       // 1. Tìm trong WorkLS bằng maCode để lấy OVNO, package, MUserID
       final workLSItem = _workLSData[maCode];
       if (workLSItem == null) {
-        print('Cảnh báo: Không tìm thấy mã $maCode trong mockWorkLSData.');
+        if (kDebugMode) {
+          print('Cảnh báo: Không tìm thấy mã $maCode trong mockWorkLSData.');
+        }
         return; // Bỏ qua bản ghi này nếu không tìm thấy gốc
       }
       final String ovNO = workLSItem['OVNO'];
       final int package = workLSItem['package']; // Dùng làm Số Lô
-      final int mUserID = workLSItem['MUserID'];
+      final String mUserID = workLSItem['MUserID'];
       final double qtyValue = workLSItem['Qty']; // Khối lượng Mẻ/Tồn từ WorkLS
 
       // 2. Tìm trong Work bằng OVNO

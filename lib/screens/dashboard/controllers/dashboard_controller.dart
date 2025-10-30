@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+//import 'package:flutter/material.dart';
 import '../../../data/weighing_data.dart'; // Import data mới
 import '../widgets/hourly_weighing_chart.dart'; // Import ChartData
 
@@ -49,11 +50,13 @@ class DashboardController with ChangeNotifier {
       // 1. Find in WorkLS using maCode to get OVNO, package, MUserID, Qty (Target/Stock)
       final workLSItem = _workLSData[maCode];
       if (workLSItem == null) {
-        print('Dashboard Warning: Cannot find code $maCode in mockWorkLSData.');
+        if (kDebugMode) {
+          print('Dashboard Warning: Cannot find code $maCode in mockWorkLSData.');
+        }
         // If we still want to show the history entry even if the original LS is gone:
         // Create a record with available data, marking others as unknown.
         _allRecords.add(WeighingRecord(
-            maCode: maCode, ovNO: 'N/A', package: 0, mUserID: 0,
+            maCode: maCode, ovNO: 'N/A', package: 0, mUserID: 'N/A',
             qty: 0.0, // Target/Stock unknown
             mixTime: mixTime, realQty: realQtyValue, isSuccess: true,
             loai: loaiValue, soLo: 0, tenPhoiKeo: 'N/A', soMay: 'N/A', nguoiThaoTac: 'N/A',
@@ -62,7 +65,7 @@ class DashboardController with ChangeNotifier {
         // Found the original WorkLS entry, proceed to get full details
         final String ovNO = workLSItem['OVNO'];
         final int package = workLSItem['package'];
-        final int mUserID = workLSItem['MUserID'];
+        final String mUserID = workLSItem['MUserID'];
         final double qtyValue = workLSItem['Qty']; // Target/Stock Qty from WorkLS
 
         // 2. Find in Work using OVNO

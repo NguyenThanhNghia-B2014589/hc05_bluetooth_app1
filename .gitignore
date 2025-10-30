@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+.env
+test.txt
+conts.txt
 
 # Symbolication related
 app.*.symbols
