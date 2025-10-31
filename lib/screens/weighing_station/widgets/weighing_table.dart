@@ -139,7 +139,7 @@ class WeighingTable extends StatelessWidget {
             ),
             if (activeOVNO != null)
             Container(
-              color: Colors.green.shade100,
+              color: const Color.fromARGB(255, 247, 220, 72),
               padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: Row(
                 children: [
