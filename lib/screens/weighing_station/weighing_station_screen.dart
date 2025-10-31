@@ -214,6 +214,9 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           weighingType: _controller.selectedWeighingType, // <-- TRUYỀN TYPE VÀO
           activeOVNO: _controller.activeOVNO,
           activeMemo: _controller.activeMemo,
+          totalTargetQty: _controller.activeTotalTargetQty,
+          totalNhap: _controller.activeTotalNhap,
+          totalXuat: _controller.activeTotalXuat,
         ),
           const SizedBox(height: 24),
         ],

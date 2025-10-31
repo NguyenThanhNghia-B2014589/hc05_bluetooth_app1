@@ -28,6 +28,14 @@ class WeighingStationController with ChangeNotifier {
   final List<WeighingRecord> _records = [];
   List<WeighingRecord> get records => _records;
 
+  double _activeTotalTargetQty = 0.0;
+  double _activeTotalNhap = 0.0;
+  double _activeTotalXuat = 0.0;
+  // Getters
+  double get activeTotalTargetQty => _activeTotalTargetQty;
+  double get activeTotalNhap => _activeTotalNhap;
+  double get activeTotalXuat => _activeTotalXuat;
+
   double _selectedPercentage = 1.0;
   double get selectedPercentage => _selectedPercentage;
   double _standardWeight = 0.0;
@@ -103,6 +111,10 @@ class WeighingStationController with ChangeNotifier {
         _activeMemo = data['memo'];
       }
 
+      _activeTotalTargetQty = (data['totalTargetQty'] as num).toDouble();
+      _activeTotalNhap = (data['totalNhapWeighed'] as num).toDouble();
+      _activeTotalXuat = (data['totalXuatWeighed'] as num).toDouble();
+
       _standardWeight = (data['qtys'] as num).toDouble();
       _calculateMinMax();
 
@@ -110,7 +122,7 @@ class WeighingStationController with ChangeNotifier {
         maCode: data['maCode'],
         ovNO: data['ovNO'],
         package: data['package'],
-        mUserID: data['mUserID'],
+        mUserID: data['mUserID'].toString(),
         qtys: (data['qtys'] as num).toDouble(),
         soLo: data['soLo'],
         tenPhoiKeo: data['tenPhoiKeo'],

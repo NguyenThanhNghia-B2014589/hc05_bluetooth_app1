@@ -8,12 +8,19 @@ class WeighingTable extends StatelessWidget {
   final String? activeOVNO;
   final String? activeMemo;
 
+  final double totalTargetQty;
+  final double totalNhap;
+  final double totalXuat;
+
   const WeighingTable({
     super.key,
     required this.records,
     required this.weighingType,
     this.activeOVNO,
     this.activeMemo,
+    required this.totalTargetQty,
+    required this.totalNhap,
+    required this.totalXuat,
   });
 
   @override
@@ -130,32 +137,43 @@ class WeighingTable extends StatelessWidget {
                 );
               },
             ),
-            if (activeOVNO != null) // Only show if there's an active OVNO
-          Container(
-            color: const Color.fromARGB(255, 218, 221, 40), // Light green background
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            child: Row(
-              children: [
-                Text('OVNO : $activeOVNO', style: summaryStyle),
-                const Spacer(flex: 1),
-                const Text('Số lô tổng: ---', style: summaryStyle),
-                const Spacer(flex: 1),
-                const Text('Nhập: --- kg', style: summaryStyle),
-                const Spacer(flex: 1),
-                const Text('Xuất: --- kg', style: summaryStyle),
-                const Spacer(flex: 1),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Memo: ${activeMemo ?? ''}', // Display Memo
-                    style: summaryStyle,
-                    textAlign: TextAlign.right,
-                    overflow: TextOverflow.ellipsis,
+            if (activeOVNO != null)
+            Container(
+              color: Colors.green.shade100,
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: Row(
+                children: [
+                  Text('OVNO : $activeOVNO', style: summaryStyle),
+                  const Spacer(flex: 1),
+                  const Text('Số lô tổng: ---', style: summaryStyle),
+                  const Spacer(flex: 1),
+
+                  // Sửa 'Nhập'
+                  Text(
+                    'Nhập: ${totalNhap.toStringAsFixed(3)} / ${totalTargetQty.toStringAsFixed(3)} kg', 
+                    style: summaryStyle
                   ),
-                ),
-              ],
+                  const Spacer(flex: 1),
+
+                  // Sửa 'Xuất'
+                  Text(
+                    'Xuất: ${totalXuat.toStringAsFixed(3)} / ${totalNhap.toStringAsFixed(3)} kg', 
+                    style: summaryStyle
+                  ),
+                  const Spacer(flex: 1),
+
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      'Memo: ${activeMemo ?? ''}',
+                      style: summaryStyle,
+                      textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

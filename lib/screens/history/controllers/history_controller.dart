@@ -71,7 +71,7 @@ class HistoryController with ChangeNotifier {
       }
       final String ovNO = workLSItem['OVNO'];
       final int package = workLSItem['package']; // Dùng làm Số Lô
-      final String mUserID = workLSItem['MUserID'];
+      final String mUserID = workLSItem['MUserID'].toString();
       final double qtyValue = workLSItem['Qty']; // Khối lượng Mẻ/Tồn từ WorkLS
 
       // 2. Tìm trong Work bằng OVNO
@@ -80,7 +80,7 @@ class HistoryController with ChangeNotifier {
       final String soMay = workItem?['soMay'] ?? 'N/A';
 
       // 3. Tìm trong Persional bằng MUserID
-      final persionalItem = _persionalData[mUserID];
+      final persionalItem = _persionalData[int.tryParse(mUserID)];
       final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
 
       // Tạo đối tượng WeighingRecord hoàn chỉnh

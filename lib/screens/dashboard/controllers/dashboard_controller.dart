@@ -65,7 +65,7 @@ class DashboardController with ChangeNotifier {
         // Found the original WorkLS entry, proceed to get full details
         final String ovNO = workLSItem['OVNO'];
         final int package = workLSItem['package'];
-        final String mUserID = workLSItem['MUserID'];
+        final String mUserID = workLSItem['MUserID'].toString();
         final double qtyValue = workLSItem['Qty']; // Target/Stock Qty from WorkLS
 
         // 2. Find in Work using OVNO
@@ -74,7 +74,7 @@ class DashboardController with ChangeNotifier {
         final String soMay = workItem?['soMay'] ?? 'N/A';
 
         // 3. Find in Persional using MUserID
-        final persionalItem = _persionalData[mUserID];
+        final persionalItem = _persionalData[int.tryParse(mUserID)];
         final String nguoiThaoTac = persionalItem?['UerName'] ?? 'Không rõ';
 
         // Create the complete WeighingRecord object
