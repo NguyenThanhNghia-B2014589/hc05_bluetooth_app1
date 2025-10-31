@@ -188,44 +188,87 @@ class WeighingStationController with ChangeNotifier {
     notifyListeners();
   }
 }
-bool completeCurrentWeighing(double currentWeight) {
+Future<bool> completeCurrentWeighing(BuildContext context, double currentWeight) async {
     if (_records.isEmpty) {
       return false; // Không có gì để hoàn tất
     }
-    // Lấy bản ghi đang chờ (bản ghi đầu tiên)
     final currentRecord = _records[0];
 
-    // Kiểm tra xem đã hoàn tất chưa
     if (currentRecord.isSuccess == true) {
       return true; // Đã hoàn tất rồi
     }
 
-    // Kiểm tra trọng lượng
+    // Kiểm tra trọng lượng (vẫn kiểm tra ở client)
     final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
 
     if (isInRange) {
-      // Cập nhật bản ghi
-      currentRecord.isSuccess = true;
-      currentRecord.mixTime = DateTime.now(); // Lưu thời gian hoàn tất
-      currentRecord.realQty = currentWeight; // Lưu khối lượng cân thực tế
-      currentRecord.loai = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat'; // Lưu loại
+      final thoiGianCan = DateTime.now();
+      final loaiCan = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat';
 
-      // TODO: Ở đây bạn cần có logic để LƯU bản ghi này vào database
-      // Ví dụ: await databaseService.saveRecord(currentRecord);
-      // Hoặc cập nhật lại mockWorkLSData nếu chỉ dùng mock
+      // 1. Chuẩn bị dữ liệu gửi đi
+      final Map<String, dynamic> body = {
+        'maCode': currentRecord.maCode,
+        'khoiLuongCan': currentWeight,
+        'thoiGianCan': thoiGianCan.toIso8601String(), // Gửi giờ UTC
+        'loai': loaiCan,
+      };
 
-      // After successfully completing, clear the active group info
-      // _activeOVNO = null;
-      // _activeMemo = null;
-      // (Commented out for now, keep showing summary until next scan)
+      try {
+        final url = Uri.parse('$_apiBaseUrl/api/complete');
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(body),
+        ).timeout(const Duration(seconds: 10));
 
-      // Reset state
-      _standardWeight = 0.0;
-      _calculateMinMax();
-      notifyListeners(); // Cập nhật UI (bảng đổi màu xanh, nút hoàn tất reset)
-      return true;
+        if (!context.mounted) return false;
+
+        // 2. Xử lý kết quả
+        if (response.statusCode == 201) {
+          // THÀNH CÔNG: Cập nhật UI
+          NotificationService().showToast(
+            context: context,
+            message: 'Cân hoàn tất!',
+            type: ToastType.success,
+          );
+          currentRecord.isSuccess = true;
+          currentRecord.mixTime = thoiGianCan;
+          currentRecord.realQty = currentWeight;
+          currentRecord.loai = loaiCan;
+          
+          _standardWeight = 0.0;
+          _calculateMinMax();
+          notifyListeners();
+          return true; // Báo thành công
+        } else {
+          // LỖI SERVER:
+          final errorData = json.decode(response.body);
+          NotificationService().showToast(
+            context: context,
+            message: 'Lỗi server: ${errorData['message'] ?? response.statusCode}',
+            type: ToastType.error,
+          );
+          return false;
+        }
+
+      } catch (e) {
+        // LỖI MẠNG
+        if (!context.mounted) return false;
+        NotificationService().showToast(
+          context: context,
+          message: 'Lỗi mạng: Không thể lưu kết quả.',
+          type: ToastType.error,
+        );
+        return false;
+      }
+      
     } else {
-      // Không đạt
+      // KHÔNG ĐẠT (Lỗi do client, không gọi API)
+      NotificationService().showToast(
+        context: context,
+        message: 'Lỗi: Trọng lượng không nằm trong phạm vi!',
+        type: ToastType.error,
+      );
       return false;
     }
   }

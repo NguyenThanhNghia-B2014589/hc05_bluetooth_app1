@@ -165,8 +165,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                                     final Color textColor = isInRange ? Colors.white : Colors.indigo;
 
                                     return ElevatedButton(
-                                      onPressed: () {
-                                        // ... (Toàn bộ logic onPressed của bạn giữ nguyên)
+                                      onPressed: () async { // <-- 1. Thêm async
                                         if (_controller.khoiLuongMe == 0.0) {
                                           NotificationService().showToast(
                                             context: context,
@@ -175,20 +174,16 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                                           );
                                           return; 
                                         }
-                                        final bool success = _controller.completeCurrentWeighing(currentWeight);
+                                        
+                                        // 2. Sửa lời gọi hàm (dùng await và thêm context)
+                                        final bool success = await _controller.completeCurrentWeighing(context, currentWeight); 
+
+                                        // 3. Xóa các toast cũ (vì controller đã tự hiển thị toast)
                                         if (success) {
-                                          NotificationService().showToast(
-                                            context: context,
-                                            message: 'Cân hoàn tất!',
-                                            type: ToastType.success,
-                                          );
+                                          // (Controller đã báo thành công và cần xóa text)
                                           _scanTextController.clear(); // Xóa text khi hoàn tất
                                         } else {
-                                          NotificationService().showToast(
-                                            context: context,
-                                            message: 'Lỗi cân: Trọng lượng không nằm trong phạm vi cho phép!',
-                                            type: ToastType.error,
-                                          );
+                                          // (Controller đã báo lỗi)
                                         }
                                       },
                                       style: ElevatedButton.styleFrom(
