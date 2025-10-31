@@ -4,24 +4,32 @@ import '../../../data/weighing_data.dart'; // Import model
 
 class SummaryData {
   final String ovNO;
-  final String? memo; // Lấy từ mockWorkData
+  final String? memo;
+  final double totalTargetQty;
+  final double totalNhap;
+  final double totalXuat;
 
-  SummaryData({required this.ovNO, this.memo});
+  SummaryData({
+    required this.ovNO,
+    this.memo,
+    required this.totalTargetQty,
+    required this.totalNhap,
+    required this.totalXuat,
+  });
 }
 
 class HistoryTable extends StatelessWidget {
-  final List<WeighingRecord> records;
+  final List<dynamic> records; // <-- Đổi tên biến (hoặc giữ 'records' nếu bạn muốn)
   const HistoryTable({super.key, required this.records});
 
   @override
   Widget build(BuildContext context) {
-  // --- Định nghĩa Style (Giữ nguyên) ---
-  const headerStyle = TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 13);
-  const cellStyle = TextStyle(fontSize: 14);
-  const summaryStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87);
+    const headerStyle = TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 13);
+    const cellStyle = TextStyle(fontSize: 14);
+    const summaryStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87);
 
-  // --- Widget Helper (Giữ nguyên headerCell, dataCell) ---
-  Widget headerCell(String title, int flex) => Expanded(
+    // --- (Hàm helper headerCell, dataCell, formatDateTime giữ nguyên) ---
+    Widget headerCell(String title, int flex) => Expanded(
         flex: flex,
         child: Container(
           color: const Color(0xFF40B9FF), // Màu xanh nhạt header
@@ -39,32 +47,12 @@ class HistoryTable extends StatelessWidget {
     // Định dạng ngày giờ
     String formatDateTime(DateTime? dt) {
       if (dt == null) return '---';
-      return DateFormat('dd/MM/yyyy HH:mm').format(dt); // Giữ format đầy đủ
+      return DateFormat('dd/MM/yyyy HH:mm').format(dt);
     }
-  // --- XỬ LÝ DỮ LIỆU ĐỂ HIỂN THỊ (NHÓM VÀ TÍNH TOÁN) ---
+    // --- (Kết thúc hàm helper) ---
 
-  // 1. Nhóm các record theo ovNO
-  Map<String, List<WeighingRecord>> groupedData = {};
-  for (var record in records) {
-    // Thêm record vào list của ovNO tương ứng
-    (groupedData[record.ovNO] ??= []).add(record);
-  }
+    // --- KHÔNG CẦN LOGIC NHÓM Ở ĐÂY NỮA (CONTROLLER ĐÃ LÀM) ---
 
-  // 2. Tạo danh sách phẳng để hiển thị (chứa cả Record và Summary)
-  List<dynamic> displayList = [];
-  groupedData.forEach((ovNO, recordList) {
-    // Thêm tất cả các record của nhóm này
-    displayList.addAll(recordList);
-
-    // Tìm Memo từ mockWorkData
-    final workItem = mockWorkData[ovNO];
-    final memo = workItem?['Memo'] as String?;
-
-    // Thêm hàng tóm tắt cho nhóm này
-    displayList.add(SummaryData(ovNO: ovNO, memo: memo));
-  });
-
-  // --- GIAO DIỆN BẢNG (CONTAINER VÀ HEADER GIỮ NGUYÊN) ---
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -90,74 +78,77 @@ class HistoryTable extends StatelessWidget {
             ),
           ),
 
-          // --- SỬA LẠI PHẦN BODY (DÙNG displayList) ---
+          // --- 2. SỬA LẠI BODY ---
           Expanded(
             child: Container(
               color: Colors.white,
-              child: displayList.isEmpty
+              child: records.isEmpty // Đổi tên 'displayList' thành 'records'
                 ? Center(child: Text('Không có dữ liệu lịch sử.', style: TextStyle(color: Colors.grey[600])))
                 : ListView.builder(
-                    itemCount: displayList.length, // Dùng list mới
+                    itemCount: records.length, // Dùng list từ controller
                     itemBuilder: (context, index) {
-                      final item = displayList[index];
+                      final item = records[index];
 
-                      // KIỂM TRA LOẠI ITEM ĐỂ RENDER ĐÚNG HÀNG
                       if (item is WeighingRecord) {
-                        // RENDER HÀNG DỮ LIỆU (DATA ROW)
+                        // RENDER HÀNG DỮ LIỆU
                         final record = item;
-                        // Xác định màu nền xen kẽ (chỉ cho data row)
-                        // Tìm index thực sự của record này trong list gốc để biết chẵn/lẻ
-                        final originalIndex = records.indexWhere((r) => r.maCode == record.maCode && r.mixTime == record.mixTime); // Cần cách xác định duy nhất
-                        final bool isEven = originalIndex % 2 == 0;
-
+                        // (Code render Data Row giữ nguyên)
                         return Container(
-                          color: isEven ? Colors.white :const Color.fromARGB(255, 231, 231, 231),
+                          color: index.isEven ? Colors.white :const Color.fromARGB(255, 231, 231, 231),
                           child: IntrinsicHeight(
                             child: Row(
                               children: [
                                 dataCell(record.maCode, 3),
-                                dataCell(record.tenPhoiKeo ?? 'N/A', 4, align: TextAlign.left), // Căn trái
+                                dataCell(record.tenPhoiKeo ?? 'N/A', 4, align: TextAlign.left),
                                 dataCell(record.soLo.toString(), 3),
                                 dataCell(record.soMay, 3),
-                                dataCell(record.nguoiThaoTac ?? 'N/A', 4, align: TextAlign.left), // Căn trái
+                                dataCell(record.nguoiThaoTac ?? 'N/A', 4, align: TextAlign.left),
                                 dataCell(formatDateTime(record.mixTime), 4),
-                                dataCell(record.qtys.toStringAsFixed(3), 3, align: TextAlign.right), // Căn phải
-                                dataCell(record.realQty?.toStringAsFixed(3) ?? '---', 3, align: TextAlign.right), // Căn phải
+                                dataCell(record.qtys.toStringAsFixed(3), 3, align: TextAlign.right),
+                                dataCell(record.realQty?.toStringAsFixed(3) ?? '---', 3, align: TextAlign.right),
                                 dataCell(record.loai ?? 'N/A', 3),
                               ],
                             ),
                           ),
                         );
                       } else if (item is SummaryData) {
-                        // RENDER HÀNG TÓM TẮT (SUMMARY ROW)
+                        // RENDER HÀNG TÓM TẮT (ĐÃ CẬP NHẬT)
                         final summary = item;
                         return Container(
-                          color: Colors.green.shade100, // Màu xanh lá nhạt
+                          color: const Color.fromARGB(255, 162, 238, 164),
                           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                           child: Row(
                             children: [
                               Text('OVNO : ${summary.ovNO}', style: summaryStyle),
                               const Spacer(flex: 1),
-                              const Text('Số lô tổng: ---', style: summaryStyle),
+                              const Text('Số lô tổng: ---', style: summaryStyle), // Vẫn giữ '---'
                               const Spacer(flex: 1),
-                              const Text('Nhập: --- kg', style: summaryStyle),
+                              // Dùng dữ liệu thật
+                              Text(
+                                'Nhập: ${summary.totalNhap.toStringAsFixed(3)} / ${summary.totalTargetQty.toStringAsFixed(3)} kg', 
+                                style: summaryStyle
+                              ),
                               const Spacer(flex: 1),
-                              const Text('Xuất: --- kg', style: summaryStyle),
+                              // Dùng dữ liệu thật
+                              Text(
+                                'Xuất: ${summary.totalXuat.toStringAsFixed(3)} / ${summary.totalNhap.toStringAsFixed(3)} kg', 
+                                style: summaryStyle
+                              ),
                               const Spacer(flex: 1),
-                              Expanded( // Cho Memo chiếm phần còn lại
-                                flex: 3, // Tăng flex cho Memo
+                              Expanded(
+                                flex: 3,
                                 child: Text(
                                   'Memo: ${summary.memo ?? ''}',
                                   style: summaryStyle,
-                                  textAlign: TextAlign.right, // Căn phải
-                                  overflow: TextOverflow.ellipsis, // Tránh tràn
+                                  textAlign: TextAlign.right,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         );
                       }
-                      return const SizedBox.shrink(); // Trường hợp khác (không xảy ra)
+                      return const SizedBox.shrink();
                     },
                   ),
             ),
