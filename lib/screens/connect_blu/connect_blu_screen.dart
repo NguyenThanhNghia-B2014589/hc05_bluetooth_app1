@@ -19,7 +19,7 @@ class _ScanScreenState extends State<ScanScreen> {
     _bluetoothService.initialize();
 
     // Khi kết nối thành công
-    _bluetoothService.onConnectedCallback = (device) {
+    _bluetoothService.onConnectedCallback = (device) async {
       if (!mounted) return;
 
       NotificationService().showToast(
@@ -27,6 +27,9 @@ class _ScanScreenState extends State<ScanScreen> {
         message: '✅ Kết nối thành công với cân ${device.name}',
         type: ToastType.success,
       );
+      await Future.delayed(const Duration(seconds: 4));
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/weighing_station');
     };
   }
 

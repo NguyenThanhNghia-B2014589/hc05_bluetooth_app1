@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,45 +14,91 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _soTheController = TextEditingController();
-  final _matKhauController = TextEditingController();
   String _selectedFactory = 'LHG';
+  bool _isLoading = false;
+  final String _apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
 
-  void _handleLogin() {
-    // Tạm thời, chúng ta sẽ không kiểm tra logic vội
-    // Cứ đăng nhập là sẽ chuyển trang
-    
-    // Sử dụng pushReplacementNamed để người dùng không thể "Back" về trang login
-    Navigator.of(context).pushReplacementNamed('/home');
+  Future<void> _handleLogin() async {
+    setState(() => _isLoading = true);
+
+    final soThe = _soTheController.text.trim();
+    if (soThe.isEmpty) {
+      NotificationService().showToast(
+        context: context,
+        message: 'Vui lòng nhập số thẻ.',
+        type: ToastType.info,
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final url = Uri.parse('$_apiBaseUrl/api/auth/login');
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'mUserID': soThe}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        // ✅ Lưu thông tin đăng nhập
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('soThe', soThe);
+        await prefs.setString('factory', _selectedFactory);
+
+        NotificationService().showToast(
+          context: context,
+          message: data['message'] ?? 'Đăng nhập thành công!',
+          type: ToastType.success,
+        );
+
+        // Đợi nhẹ cho toast hiện xong
+        await Future.delayed(const Duration(seconds: 4));
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        NotificationService().showToast(
+          context: context,
+          message: data['message'] ?? 'Số thẻ không tồn tại.',
+          type: ToastType.error,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      NotificationService().showToast(
+        context: context,
+        message: 'Lỗi kết nối: Không thể kết nối tới server.',
+        type: ToastType.error,
+      );
+    }
+
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   void dispose() {
     _soTheController.dispose();
-    _matKhauController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFB0D9F3), // Màu nền xanh nhạt
+      backgroundColor: const Color(0xFFB0D9F3),
       body: SingleChildScrollView(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            // Đảm bảo nội dung luôn cao ít nhất bằng chiều cao màn hình
-            minHeight: MediaQuery.of(context).size.height, 
+            minHeight: MediaQuery.of(context).size.height,
           ),
           child: Center(
             child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth > 800) {
-                  // Giao diện cho màn hình RỘNG (như ảnh của bạn)
-                  return _buildWideLayout();
-                } else {
-                  // Giao diện cho màn hình HẸP (cho điện thoại)
-                  return _buildNarrowLayout();
-                }
-              },
+              builder: (context, constraints) =>
+                  constraints.maxWidth > 800 ? _buildWideLayout() : _buildNarrowLayout(),
             ),
           ),
         ),
@@ -55,54 +106,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Giao diện màn hình RỘNG (side-by-side)
   Widget _buildWideLayout() {
     return Row(
       children: [
-        // Cột 1: Hình ảnh
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'lib/assets/images/weight_login.png', //ĐƯỜNG DẪN HÌNH ẢNH
-                width: 400,
-              ), 
-            ],
-          ),
-        ),
-        // Cột 2: Form đăng nhập
         Expanded(
           child: Center(
-            child: _buildLoginForm(),
+            child: Image.asset('lib/assets/images/weight_login.png', width: 400),
           ),
         ),
+        Expanded(child: Center(child: _buildLoginForm())),
       ],
     );
   }
 
-  // Giao diện màn hình HẸP (stacked)
   Widget _buildNarrowLayout() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'lib/assets/images/weight_login.png', //ĐƯỜNG DẪN HÌNH ẢNH
-              width: 250,
-            ),
-            const SizedBox(height: 32),
-            _buildLoginForm(),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset('lib/assets/images/weight_login.png', width: 250),
+          const SizedBox(height: 32),
+          _buildLoginForm(),
+        ],
       ),
     );
   }
 
-
-  // Widget chứa Form đăng nhập (dùng chung cho cả 2 layout)
   Widget _buildLoginForm() {
     return Container(
       width: 400,
@@ -119,88 +149,50 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Đăng nhập',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
+          Text('Đăng nhập',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.bold, color: Colors.grey[800])),
           const SizedBox(height: 32),
-          // --- Số thẻ ---
-          Text('Số thẻ', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold,)),
+          Text('Số thẻ',
+              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           TextField(
             controller: _soTheController,
             decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // --- Mật khẩu ---
-          Text('Mật khẩu', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold,)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _matKhauController,
-            obscureText: true, // Ẩn mật khẩu
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),
           ),
           const SizedBox(height: 32),
-          // --- Chọn nhà máy ---
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.grey.shade400),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedFactory,
-                isExpanded: true,
-                icon: const Icon(Icons.factory_outlined), // Thêm icon
-                items: ['LHG', 'LYV', 'LVL', 'LAZ', 'LZS', 'LYM']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedFactory = newValue;
-                    });
-                  }
-                },
+          DropdownButtonHideUnderline(
+            child: DropdownButtonFormField<String>(
+              value: _selectedFactory,
+              icon: const Icon(Icons.factory_outlined),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
+              items: ['LHG', 'LYV', 'LVL', 'LAZ', 'LZS', 'LYM']
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedFactory = v ?? 'LHG'),
             ),
           ),
           const SizedBox(height: 32),
-          // --- Nút Đăng nhập ---
           ElevatedButton(
-            onPressed: _handleLogin,
+            onPressed: _isLoading ? null : _handleLogin,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1), // Màu tím
+              backgroundColor: const Color(0xFF6366F1),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
             ),
-            child: const Text('Đăng nhập', style: TextStyle(fontSize: 16)),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Đăng nhập', style: TextStyle(fontSize: 16)),
           ),
         ],
       ),

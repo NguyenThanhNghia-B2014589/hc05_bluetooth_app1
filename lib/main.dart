@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/connect_blu/connect_blu_screen.dart';
 import 'screens/weighing_station/weighing_station_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/history/history_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
-import 'package:hc05_bluetooth_app/screens/splash/splash_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/splash/splash_screen.dart';
 
-
-Future<void> main() async { // <-- Thêm 'async'
-  // Đảm bảo Flutter sẵn sàng
-  WidgetsFlutterBinding.ensureInitialized(); 
-  
-  // Load file .env
-  await dotenv.load(fileName: ".env"); 
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
@@ -31,8 +27,8 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color.fromARGB(255, 173, 207, 241), // Màu nền
       ),
-      // Khai báo các màn hình (route)
-      initialRoute: '/splash', // Bắt đầu ở màn hình Splash
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
