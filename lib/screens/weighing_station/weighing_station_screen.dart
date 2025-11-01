@@ -41,33 +41,77 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
 
 
   Widget _buildWeighingTypeDropdown() {
-  // (AnimatedBuilder đã lắng nghe _controller ở ngoài,
-  // nên widget này sẽ tự build lại khi _controller.updateWeighingType)
-
+    // Xác định màu sắc dựa trên loại cân
+    final bool isNhap = _controller.selectedWeighingType == WeighingType.nhap;
+    final Color backgroundColor = isNhap 
+        ? const Color(0xFF4CAF50)  // Xanh lá cho Nhập
+        : const Color(0xFF2196F3); // Xanh dương cho Xuất
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 110, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10.0),
+        boxShadow: [
+          BoxShadow(
+            color: backgroundColor.withValues(alpha:5),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<WeighingType>(
           value: _controller.selectedWeighingType,
-          // isExpanded: true, // <-- XÓA DÒNG NÀY
-          icon: const Icon(Icons.import_export, color: Colors.blueAccent),
-          items: const [
+          icon: const SizedBox.shrink(), // Xóa icon mũi tên
+          dropdownColor: Colors.transparent, // Nền trong suốt
+          
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          items: [
             DropdownMenuItem(
               value: WeighingType.nhap,
-              child: Text('Cân Nhập'), // Đơn giản hóa text
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50), // Xanh lá cho Nhập
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Text('Cân Nhập', style: TextStyle(color: Colors.white, fontSize: 20)),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_downward, color: Colors.white, size: 30),
+                  ],
+                ),
+              ),
             ),
             DropdownMenuItem(
               value: WeighingType.xuat,
-              child: Text('Cân Xuất'), // Đơn giản hóa text
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2196F3), // Xanh dương cho Xuất
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Text('Cân Xuất', style: TextStyle(color: Colors.white, fontSize: 20)),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_upward, color: Colors.white, size: 30),
+                  ],
+                ),
+              ),
             ),
           ],
           onChanged: (WeighingType? newValue) {
-            _controller.updateWeighingType(newValue);
+            if (newValue != null) {
+              _controller.updateWeighingType(newValue);
+              setState(() {}); // Force rebuild để đổi màu
+            }
           },
         ),
       ),
@@ -106,12 +150,27 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
 
   // Widget layout chính
   Widget _buildLayout() {
-    return SingleChildScrollView(
+  // Xác định màu nền dựa trên loại cân
+  final bool isNhap = _controller.selectedWeighingType == WeighingType.nhap;
+  final Color pageBackgroundColor = isNhap
+      ? const Color.fromARGB(255, 173, 207, 241)  // Xanh lá nhạt cho Nhập
+      : const Color.fromARGB(255, 173, 207, 241); // Xanh dương nhạt cho Xuất
+
+  return Container(
+    color: pageBackgroundColor, // Đổi màu nền cả trang
+    child: SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Trạm Cân', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const Text(
+            'Trạm Cân',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,8 +180,8 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                 flex: 2,
                 child: CurrentWeightCard(
                   bluetoothService: _bluetoothService,
-                  minWeight: _controller.minWeight,     
-                  maxWeight: _controller.maxWeight,     
+                  minWeight: _controller.minWeight,
+                  maxWeight: _controller.maxWeight,
                   khoiLuongMe: _controller.khoiLuongMe,
                 ),
               ),
@@ -133,74 +192,73 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 5),
-                    ActionBar(
-                      selectedPercentage: _controller.selectedPercentage,
-                      minWeight: _controller.minWeight,
-                      maxWeight: _controller.maxWeight,
-                      onPercentageChanged: _controller.updatePercentage,
-                    ), // << WIDGET CHO ACTION BAR
-
+                    Row(
+                      children: [
+                        // Dropdown %
+                        ActionBar(
+                          selectedPercentage: _controller.selectedPercentage,
+                          onPercentageChanged: _controller.updatePercentage,
+                        ),
+                        const SizedBox(width: 16),
+                        // Dropdown Nhập/Xuất (đã styled)
+                        _buildWeighingTypeDropdown(),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                     ScanInputField(
-                      controller: _scanTextController, // SỬ DỤNG CONTROLLER Ở ĐÂY
-                      onScan: (code) => _controller.handleScan(context, code)), // WIDGET SCAN
+                      controller: _scanTextController,
+                      onScan: (code) => _controller.handleScan(context, code),
+                    ),
                     const SizedBox(height: 20),
-                    Row(
-                        children: [
-                              // Dropdown
-                              _buildWeighingTypeDropdown(), 
-                              
-                              const SizedBox(width: 16), // Khoảng cách giữa 2 widget
-                              
-                              // 2. Nút Hoàn Tất (bọc trong Expanded)
-                              Expanded(
-                                child: ValueListenableBuilder<double>(
-                                  valueListenable: _bluetoothService.currentWeight,
-                                  builder: (context, currentWeight, child) {
-                                    final bool isInRange = (currentWeight >= _controller.minWeight) &&
-                                        (currentWeight <= _controller.maxWeight) &&
-                                        _controller.minWeight > 0;
-                                    
-                                    final Color buttonColor = isInRange ? Colors.green : const Color(0xFFE8EAF6);
-                                    final Color textColor = isInRange ? Colors.white : Colors.indigo;
+                    ValueListenableBuilder<double>(
+                      valueListenable: _bluetoothService.currentWeight,
+                      builder: (context, currentWeight, child) {
+                        final bool isInRange = (currentWeight >= _controller.minWeight) &&
+                            (currentWeight <= _controller.maxWeight) &&
+                            _controller.minWeight > 0;
+                        
+                        final Color buttonColor = isInRange ? Colors.green : const Color(0xFFE8EAF6);
+                        final Color textColor = isInRange ? Colors.white : Colors.indigo;
 
-                                    return ElevatedButton(
-                                      onPressed: () async { // <-- 1. Thêm async
-                                        if (_controller.khoiLuongMe == 0.0) {
-                                          NotificationService().showToast(
-                                            context: context,
-                                            message: 'Vui lòng scan mã để cân!',
-                                            type: ToastType.info,
-                                          );
-                                          return; 
-                                        }
-                                        
-                                        // 2. Sửa lời gọi hàm (dùng await và thêm context)
-                                        final bool success = await _controller.completeCurrentWeighing(context, currentWeight); 
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (_controller.khoiLuongMe == 0.0) {
+                                NotificationService().showToast(
+                                  context: context,
+                                  message: 'Vui lòng scan mã để cân!',
+                                  type: ToastType.info,
+                                );
+                                return;
+                              }
+                              
+                              final bool success = await _controller.completeCurrentWeighing(
+                                context,
+                                currentWeight,
+                              );
 
-                                        // 3. Xóa các toast cũ (vì controller đã tự hiển thị toast)
-                                        if (success) {
-                                          // (Controller đã báo thành công và cần xóa text)
-                                          _scanTextController.clear(); // Xóa text khi hoàn tất
-                                        } else {
-                                          // (Controller đã báo lỗi)
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: buttonColor,
-                                        foregroundColor: textColor,
-                                        elevation: 2,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                        // Thêm dòng này để nút lấp đầy Row
-                                        minimumSize: const Size(double.infinity, 48), // 48 là chiều cao ~
-                                      ),
-                                      child: const Text('Hoàn tất'),
-                                    );
-                                  },
-                                ),
+                              if (success) {
+                                _scanTextController.clear();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: buttonColor,
+                              foregroundColor: textColor,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                            ],
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                              minimumSize: const Size(double.infinity, 48),
+                            ),
+                            child: const Text('Hoàn tất', style: TextStyle(fontSize: 30)),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -208,19 +266,19 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          // Bảng cân
           WeighingTable(
-          records: _controller.records,
-          weighingType: _controller.selectedWeighingType, // <-- TRUYỀN TYPE VÀO
-          activeOVNO: _controller.activeOVNO,
-          activeMemo: _controller.activeMemo,
-          totalTargetQty: _controller.activeTotalTargetQty,
-          totalNhap: _controller.activeTotalNhap,
-          totalXuat: _controller.activeTotalXuat,
-        ),
+            records: _controller.records,
+            weighingType: _controller.selectedWeighingType,
+            activeOVNO: _controller.activeOVNO,
+            activeMemo: _controller.activeMemo,
+            totalTargetQty: _controller.activeTotalTargetQty,
+            totalNhap: _controller.activeTotalNhap,
+            totalXuat: _controller.activeTotalXuat,
+          ),
           const SizedBox(height: 24),
         ],
       ),
-    );
+    ),
+  );
   }
 }

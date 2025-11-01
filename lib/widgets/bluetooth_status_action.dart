@@ -21,7 +21,7 @@ class BluetoothStatusAction extends StatelessWidget {
           return Row(
             children: [
               Text(
-                device.name, // Lỗi "getter 'name' isn't defined" sẽ hết sau khi bạn import
+                'Cân: ${device.name}',// Lỗi "getter 'name' isn't defined" sẽ hết sau khi bạn import
                 style: const TextStyle(
                     color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 20),
               ),
