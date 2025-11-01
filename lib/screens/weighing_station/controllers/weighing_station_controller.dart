@@ -131,7 +131,7 @@ class WeighingStationController with ChangeNotifier {
       );
 
       _records.insert(0, newRecord);
-      if (_records.length > 5) {
+      if (_records.length > 2) { // số lượng hàng tối đa
         _records.removeLast();
       }
       
@@ -237,17 +237,29 @@ Future<bool> completeCurrentWeighing(BuildContext context, double currentWeight)
 
         // 2. Xử lý kết quả
         if (response.statusCode == 201) {
+          final data = json.decode(response.body);
           // THÀNH CÔNG: Cập nhật UI
           NotificationService().showToast(
             context: context,
-            message: 'Cân hoàn tất!',
+            message: 'Tên Phôi Keo: ${currentRecord.tenPhoiKeo}\n'
+                     'Số Lô: ${currentRecord.soLo}\n'
+                     'Đã cân: ${currentWeight.toStringAsFixed(3)} kg!',
             type: ToastType.success,
           );
           currentRecord.isSuccess = true;
           currentRecord.mixTime = thoiGianCan;
           currentRecord.realQty = currentWeight;
           currentRecord.loai = loaiCan;
-          
+
+          //Load lại thông tin cho hàng tổng kết
+          final summary = data['summaryData'];
+          if (summary != null) {
+            _activeTotalTargetQty = (summary['totalTargetQty'] as num).toDouble();
+            _activeTotalNhap = (summary['totalNhapWeighed'] as num).toDouble();
+            _activeTotalXuat = (summary['totalXuatWeighed'] as num).toDouble();
+            _activeMemo = summary['memo']; // Memo cũng được cập nhật
+          }
+
           _standardWeight = 0.0;
           _calculateMinMax();
           notifyListeners();

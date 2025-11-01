@@ -68,7 +68,7 @@ class CurrentWeightCard extends StatelessWidget {
                         Text(
                           'MIN: ${minWeight.toStringAsFixed(2)} KG',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
@@ -77,14 +77,14 @@ class CurrentWeightCard extends StatelessWidget {
                         Text(
                           'MAX: ${maxWeight.toStringAsFixed(2)} KG',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
                       ],
                     ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 30),
 
                 // Chênh lệch
                 Text(

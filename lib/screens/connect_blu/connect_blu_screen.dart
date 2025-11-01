@@ -3,7 +3,6 @@ import '../../models/bluetooth_device.dart';
 import '../../services/bluetooth_service.dart';
 import '../../services/notification_service.dart';
 
-
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
 
@@ -18,25 +17,17 @@ class _ScanScreenState extends State<ScanScreen> {
   void initState() {
     super.initState();
     _bluetoothService.initialize();
-    _bluetoothService.connectedDevice.addListener(_onConnectionChange);
-  }
 
-  @override
-  void dispose() {
-    _bluetoothService.connectedDevice.removeListener(_onConnectionChange);
-    super.dispose();
-  }
-  
-  void _onConnectionChange() {
-    if (_bluetoothService.connectedDevice.value != null && mounted) {
+    // Khi kết nối thành công
+    _bluetoothService.onConnectedCallback = (device) {
+      if (!mounted) return;
+
       NotificationService().showToast(
         context: context,
-        message: 'Kết nối thành công với cân ${_bluetoothService.connectedDevice.value!.name}',
+        message: '✅ Kết nối thành công với cân ${device.name}',
         type: ToastType.success,
       );
-      // Khi kết nối thành công, chuyển sang màn hình Trạm Cân
-      Navigator.of(context).pushReplacementNamed('/weighing_station');
-    }
+    };
   }
 
   @override
@@ -48,8 +39,8 @@ class _ScanScreenState extends State<ScanScreen> {
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Quay lại trang chủ',
           onPressed: () {
-            _bluetoothService.stopScan(); // Dừng quét nếu đang quét
-            Navigator.of(context).pop(); // Quay về Home
+            _bluetoothService.stopScan();
+            Navigator.of(context).pop();
           },
         ),
         actions: [

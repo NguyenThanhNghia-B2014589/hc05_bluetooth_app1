@@ -24,18 +24,33 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
 
   final TextEditingController _scanTextController = TextEditingController(); // CONTROLLER CHO SCAN INPUT FIELD
 
+  void _onConnectionChange() {
+    // 1. Kiểm tra xem màn hình còn "sống" (mounted)
+    // 2. Và kiểm tra xem Bluetooth có bị ngắt (value == null)
+    if (mounted && _bluetoothService.connectedDevice.value == null) {
+      
+      // 3. Chỉ hiện thông báo, KHÔNG chuyển trang
+      NotificationService().showToast(
+        context: context,
+        message: 'Đã mất kết nối với cân Bluetooth!',
+        type: ToastType.error, // Hộp thoại màu đỏ
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
-
+    _bluetoothService.connectedDevice.addListener(_onConnectionChange);
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _scanTextController.dispose(); // Hủy controller khi màn hình bị hủy
+    _bluetoothService.connectedDevice.removeListener(_onConnectionChange);
     super.dispose();
   }
 
@@ -48,7 +63,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
         : const Color(0xFF2196F3); // Xanh dương cho Xuất
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 110, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 115, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(10.0),
@@ -129,7 +144,6 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
           tooltip: 'Quay lại trang chủ',
           onPressed: () {
             // Logic cho nút Back cụ thể của màn hình này
-            _bluetoothService.disconnect();
             Navigator.of(context).pop();
           },
         ),
