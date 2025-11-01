@@ -84,7 +84,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                   children: [
                     Text('Cân Nhập', style: TextStyle(color: Colors.white, fontSize: 20)),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_downward, color: Colors.white, size: 30),
+                    Icon(Icons.arrow_downward, color: Color.fromARGB(255, 238, 234, 9), size: 30),
                   ],
                 ),
               ),
@@ -101,7 +101,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                   children: [
                     Text('Cân Xuất', style: TextStyle(color: Colors.white, fontSize: 20)),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_upward, color: Colors.white, size: 30),
+                    Icon(Icons.arrow_upward,color: Color.fromARGB(255, 238, 9, 9), size: 30),
                   ],
                 ),
               ),

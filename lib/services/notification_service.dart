@@ -1,71 +1,85 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/toast_widget.dart';
 
-// Enum để định nghĩa các loại thông báo
 enum ToastType { success, error, info }
 
 class NotificationService {
-  // Singleton pattern để dễ dàng truy cập từ mọi nơi
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  // Hàm chính để hiển thị thông báo
+  // --- SỬA LẠI HÀM 'showToast' ---
   void showToast({
     required BuildContext context,
     required String message,
-    ToastType type = ToastType.info,
+    required ToastType type,
   }) {
-    // Lấy OverlayState để có thể chèn widget lên trên
-    final overlay = Overlay.of(context);
-    OverlayEntry? overlayEntry;
+    // 1. Tạo một Dialog (giống như trước)
+    final Widget dialog = _buildAutoDismissDialog(context, message, type);
 
-    // Lấy thông tin style dựa trên loại thông báo
-    final icon = _getIconForType(type);
-    final color = _getColorForType(type);
+    // 2. Hiển thị Dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Không cho bấm ra ngoài để tắt
+      builder: (BuildContext dialogContext) {
+        return dialog;
+      },
+    ).then((_) {
+      // (Hàm này được gọi khi dialog bị đóng)
+    });
 
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 20.0, // Khoảng cách từ đỉnh màn hình
-        left: 0,
-        right: 0,
-        child: ToastWidget(
-          message: message,
-          icon: icon,
-          backgroundColor: color,
-          onDismissed: () {
-            // Khi animation kết thúc, remove widget khỏi cây
-            overlayEntry?.remove();
-          },
-        ),
-      ),
-    );
-
-    // Chèn widget vào cây Overlay
-    overlay.insert(overlayEntry);
+    // 3. Tự động đóng Dialog sau 3 giây
+    Timer(const Duration(seconds: 3), () {
+      // Kiểm tra xem Dialog còn "sống" không trước khi đóng
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+         Navigator.of(context, rootNavigator: true).pop();
+      }
+    });
   }
 
-  // Hàm helper để lấy màu sắc
-  Color _getColorForType(ToastType type) {
-  switch (type) {
-    case ToastType.success:
-      return Colors.green.shade600;
-    case ToastType.error:
-      return Colors.red.shade600;
-    default:
-      return Colors.blue.shade600;
-  }
-}
+  // --- HÀM HELPER (ĐÃ XÓA NÚT "OK") ---
+  Widget _buildAutoDismissDialog(BuildContext context, String message, ToastType type) {
+    IconData iconData;
+    String title;
+    Color backgroundColor;
 
-  // Hàm helper để lấy icon
-  IconData _getIconForType(ToastType type) {
+    const Color textColor = Colors.white;
+
     switch (type) {
       case ToastType.success:
-        return Icons.check_circle_outline;
+        iconData = Icons.check_circle_outline;
+        backgroundColor = Colors.green.shade600;
+        title = 'Thành công';
+        break;
       case ToastType.error:
-        return Icons.highlight_off;
-      default:
-        return Icons.info_outline;
+        iconData = Icons.error_outline;
+        backgroundColor = Colors.red.shade600;
+        title = 'Đã xảy ra lỗi';
+        break;
+      case ToastType.info:
+      iconData = Icons.info_outline;
+       backgroundColor = Colors.blue.shade600;
+        title = 'Thông báo';
+        break;
     }
+
+    return AlertDialog(
+      backgroundColor: backgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      title: Row(
+        children: [
+          Icon(iconData, color: textColor, size: 28),
+          const SizedBox(width: 12),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: textColor,)),
+        ],
+      ),
+      content: Text(
+        message,
+        style: const TextStyle(fontSize: 16, color: textColor),
+      ),
+      actions: null, 
+    );
   }
 }

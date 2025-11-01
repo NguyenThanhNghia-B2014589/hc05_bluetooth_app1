@@ -41,19 +41,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Sửa đúng tên file icon bạn đã lưu
                     iconPath: 'lib/assets/images/weight-scale.png', 
                     label: 'Trạm cân',
-                    onPressed: () {
-                      // Chuyển hướng thông minh:
-                      // Nếu đã kết nối BT -> vào Trạm Cân
-                      // Nếu chưa -> vào trang Scan
+                    onPressed: () async { // <-- 1. THÊM ASYNC
+                      
                       if (_bluetoothService.connectedDevice.value != null) {
                         Navigator.of(context).pushNamed('/weighing_station');
                       } else {
+                        
+                        // 2. HIỂN THỊ THÔNG BÁO (NHƯNG KHÔNG AWAIT)
                         NotificationService().showToast(
                           context: context,
                           message: 'Chưa kết nối với cân! Đang chuyển đến trang kết nối...',
                           type: ToastType.info,
                         );
-                        Navigator.of(context).pushNamed('/scan');
+
+                        // 3. ĐỢI 3 GIÂY (cho thông báo tự tắt)
+                        await Future.delayed(const Duration(seconds: 3));
+
+                        // 4. KIỂM TRA CONTEXT TRƯỚC KHI CHUYỂN TRANG
+                        if (context.mounted) {
+                          Navigator.of(context).pushNamed('/scan');
+                        }
                       }
                     },
                   ),

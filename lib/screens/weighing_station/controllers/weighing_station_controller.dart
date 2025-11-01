@@ -137,7 +137,7 @@ class WeighingStationController with ChangeNotifier {
       
       NotificationService().showToast(
         context: context,
-        message: 'Scan thành công!',
+       message: 'Scan mã $code thành công!',
         type: ToastType.success,
       );
     
