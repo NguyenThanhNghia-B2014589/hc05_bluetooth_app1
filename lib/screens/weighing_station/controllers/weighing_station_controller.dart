@@ -223,62 +223,89 @@ class WeighingStationController with ChangeNotifier {
 
     final bool isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
 
-    if (isInRange) {
-      final thoiGianCan = DateTime.now();
-      final loaiCan = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat';
-
-      final Map<String, dynamic> localData = {
-        'maCode': currentRecord.maCode,
-        'khoiLuongCan': currentWeight,
-        'thoiGianCan': thoiGianCan.toIso8601String(),
-        'loai': loaiCan,
-      };
-
-      try {
-        // 1. LƯU VÀO HÀNG ĐỢI CỤC BỘ
-        final db = await _dbHelper.database;
-        await db.insert('HistoryQueue', localData);
-
-        // 2. CẬP NHẬT UI
-        currentRecord.isSuccess = true;
-        currentRecord.mixTime = thoiGianCan;
-        currentRecord.realQty = currentWeight;
-        currentRecord.loai = loaiCan;
-        _standardWeight = 0.0;
-        _calculateMinMax();
-        
-        // 3. HIỂN THỊ THÔNG BÁO THÀNH CÔNG
-        if (context.mounted) {
-          NotificationService().showToast(
-            context: context,
-            message: 'Tên Phôi Keo: ${currentRecord.tenPhoiKeo}\n'
-                    'Số Lô: ${currentRecord.soLo}\n'
-                    'Đã cân: ${currentWeight.toStringAsFixed(3)} kg!',
-            type: ToastType.success,
-          );
-        }
-
-        // 4. KIỂM TRA MẠNG VÀ THỬ ĐỒNG BỘ (CHẠY NGẦM)
-        syncPendingData(); 
-
-        notifyListeners();
-        return true;
-
-      } catch (e) {
-        if (kDebugMode) print('❌ Lỗi lưu SQLite: $e');
-        if (!context.mounted) return false;
-        NotificationService().showToast(
-          context: context,
-          message: 'Lỗi nghiêm trọng: Không thể lưu vào DB cục bộ.',
-          type: ToastType.error,
-        );
-        return false;
-      }
-    } else {
-      // KHÔNG ĐẠT (Lỗi do client, không gọi API)
+    if (!isInRange) {
+      // Lỗi không nằm trong phạm vi (Báo lỗi ngay)
       NotificationService().showToast(
         context: context,
         message: 'Lỗi: Trọng lượng không nằm trong phạm vi!',
+        type: ToastType.error,
+      );
+      return false;
+    }
+
+    // Nếu đã nằm trong phạm vi, bắt đầu xử lý DB
+    final thoiGianCan = DateTime.now();
+    final loaiCan = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat';
+
+    final Map<String, dynamic> localData = {
+      'maCode': currentRecord.maCode,
+      'khoiLuongCan': currentWeight,
+      'thoiGianCan': thoiGianCan.toIso8601String(),
+      'loai': loaiCan,
+    };
+
+    try {
+      final db = await _dbHelper.database;
+
+      // KIỂM TRA OFFLINE
+      if (loaiCan == 'nhap') {
+        final List<Map<String, dynamic>> existingInQueue = await db.query(
+          'HistoryQueue',
+          where: 'maCode = ? AND loai = ?',
+          whereArgs: [currentRecord.maCode, 'nhap'],
+        );
+
+        if (existingInQueue.isNotEmpty) {
+          // NÉM LỖI NGHIỆP VỤ
+          throw WeighingException('Mã này đã được cân (đang chờ đồng bộ).');
+        }
+      }
+
+      // LƯU VÀO HÀNG ĐỢI
+      await db.insert('HistoryQueue', localData);
+
+      // CẬP NHẬT UI
+      currentRecord.isSuccess = true;
+      currentRecord.mixTime = thoiGianCan;
+      currentRecord.realQty = currentWeight;
+      currentRecord.loai = loaiCan;
+      _standardWeight = 0.0;
+      _calculateMinMax();
+
+      // HIỂN THỊ THÔNG BÁO THÀNH CÔNG
+      if (!context.mounted) return false;
+      NotificationService().showToast(
+        context: context,
+        message: 'Tên Phôi Keo: ${currentRecord.tenPhoiKeo}\n'
+                'Số Lô: ${currentRecord.soLo}\n'
+                'Đã cân: ${currentWeight.toStringAsFixed(3)} kg!',
+        type: ToastType.success,
+      );
+
+      // THỬ ĐỒNG BỘ (NGẦM)
+      syncPendingData(); 
+
+      notifyListeners();
+      return true;
+
+    } on WeighingException catch (e) {
+      // --- BẮT LỖI NGHIỆP VỤ (MỚI) ---
+      if (kDebugMode) print('⚖️ Lỗi nghiệp vụ cân: ${e.message}');
+      if (!context.mounted) return false;
+      NotificationService().showToast(
+        context: context,
+        message: e.message, // Hiển thị đúng lỗi "Mã này đã được cân..."
+        type: ToastType.error,
+      );
+      return false;
+
+    } catch (e) {
+      // --- BẮT LỖI NGHIÊM TRỌNG ---
+      if (kDebugMode) print('❌ Lỗi lưu SQLite: $e');
+      if (!context.mounted) return false;
+      NotificationService().showToast(
+        context: context,
+        message: 'Lỗi nghiêm trọng: Không thể lưu vào DB cục bộ.',
         type: ToastType.error,
       );
       return false;

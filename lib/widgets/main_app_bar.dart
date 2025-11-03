@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
 import 'bluetooth_status_action.dart';
 import '../services/auth_service.dart';
+import '../services/server_status_service.dart'; // 👈 Thêm service kiểm tra ping server
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final Widget? leading; // Cho phép tùy chỉnh nút leading (như nút Back)
+  final Widget? leading;
   final BluetoothService bluetoothService;
 
   const MainAppBar({
@@ -18,12 +19,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      // Các thuộc tính style chung
       elevation: 0,
-      backgroundColor: Colors.white, // Bạn có thể đặt màu nền chung ở đây
-      foregroundColor: Colors.black87,   // Màu chung cho icon và text
-
-      // Title và Leading tùy biến
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black87,
       title: Text(
         title,
         style: const TextStyle(
@@ -32,21 +30,20 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       leading: leading,
-
-      // Actions cố định cho layout này
       actions: [
+        // --- 1. Menu người dùng ---
         PopupMenuButton<String>(
           onSelected: (value) {
             if (value == 'logout') {
               bluetoothService.disconnect();
               AuthService().logout();
               Navigator.of(context).pushNamedAndRemoveUntil(
-                '/login', 
-                (Route<dynamic> route) => false
+                '/login',
+                (Route<dynamic> route) => false,
               );
             }
           },
-          icon: const Icon(Icons.person, color: Colors.black, size: 30.0,), // Icon Người
+          icon: const Icon(Icons.person, color: Colors.black, size: 30.0),
           tooltip: 'Tùy chọn',
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
             PopupMenuItem<String>(
@@ -62,14 +59,12 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
           ],
         ),
 
-        // --- 2. Tên (AnimatedBuilder) ---
+        // --- 2. Tên đăng nhập ---
         AnimatedBuilder(
-          animation: AuthService(), 
+          animation: AuthService(),
           builder: (context, child) {
             final auth = AuthService();
-            if (!auth.isLoggedIn) {
-              return const SizedBox.shrink(); // Ẩn nếu chưa đăng nhập
-            }
+            if (!auth.isLoggedIn) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Center(
@@ -86,13 +81,43 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         ),
         const SizedBox(width: 8),
+
+        // --- 3. Bluetooth ---
         BluetoothStatusAction(bluetoothService: bluetoothService),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
+
+        // --- 4. Server backend (mới thêm) ---
+        AnimatedBuilder(
+          animation: ServerStatusService(),
+          builder: (context, child) {
+            final server = ServerStatusService();
+            final connected = server.isServerConnected;
+
+            return Row(
+              children: [
+                Icon(
+                  connected ? Icons.cloud_done : Icons.cloud_off,
+                  color: connected ? Colors.green : Colors.red,
+                  size: 22,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  connected ? 'Server OK' : 'Mất kết nối server',
+                  style: TextStyle(
+                    color: connected ? Colors.green.shade700 : Colors.red.shade700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
 
-  // Bắt buộc phải có khi implements PreferredSizeWidget
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

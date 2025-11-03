@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/bluetooth_service.dart';
 import '../../widgets/main_app_bar.dart';
 import '../../services/notification_service.dart';
+import '../../services/server_status_service.dart'; // 👈 Thêm dòng này
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +14,21 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // HomeScreen cũng cần service để truyền cho AppBar
   final BluetoothService _bluetoothService = BluetoothService();
+
+  @override
+  void initState() {
+    super.initState();
+    _initServerMonitoring(); // 👈 Gọi hàm khởi động kiểm tra server
+  }
+
+  Future<void> _initServerMonitoring() async {
+    try {
+      await ServerStatusService().startMonitoring();
+    } catch (e) {
+      // Có thể log hoặc hiển thị toast nếu muốn
+      debugPrint('Lỗi khi khởi động theo dõi server: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,26 +54,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _buildMenuButton(
                     context: context,
-                    // Sửa đúng tên file icon bạn đã lưu
                     iconPath: 'lib/assets/images/weight-scale.png', 
                     label: 'Trạm cân',
-                    onPressed: () async { // <-- 1. THÊM ASYNC
-                      
+                    onPressed: () async {
                       if (_bluetoothService.connectedDevice.value != null) {
                         Navigator.of(context).pushNamed('/weighing_station');
                       } else {
-                        
-                        // 2. HIỂN THỊ THÔNG BÁO (NHƯNG KHÔNG AWAIT)
                         NotificationService().showToast(
                           context: context,
                           message: 'Chưa kết nối với cân! Đang chuyển đến trang kết nối...',
                           type: ToastType.info,
                         );
 
-                        // 3. ĐỢI 3 GIÂY (cho thông báo tự tắt)
                         await Future.delayed(const Duration(seconds: 3));
 
-                        // 4. KIỂM TRA CONTEXT TRƯỚC KHI CHUYỂN TRANG
                         if (context.mounted) {
                           Navigator.of(context).pushNamed('/scan');
                         }
@@ -85,10 +95,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           
-          // Phần footer
+          // Footer
           InkWell(
             onTap: () {
-              // Lối tắt: Vào thẳng trạm cân không cần BT
               Navigator.of(context).pushNamed('/weighing_station');
             },
             child: Padding(
@@ -107,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget helper để tạo 1 nút chức năng (Icon + Text)
+  // Helper tạo nút chức năng
   Widget _buildMenuButton({
     required BuildContext context,
     required String iconPath,
@@ -124,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Image.asset(
               iconPath,
-              width: 100, // Bạn có thể chỉnh kích cỡ
+              width: 100,
               height: 100,
             ),
             const SizedBox(height: 16),

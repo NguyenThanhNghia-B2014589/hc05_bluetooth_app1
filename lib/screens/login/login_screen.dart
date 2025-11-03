@@ -1,10 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import '../../services/notification_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/database_helper.dart';
+import '../../services/sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,8 +22,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _soTheController = TextEditingController();
   String _selectedFactory = 'LHG';
   bool _isLoading = false;
-  final String _apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
 
+  // Địa chỉ server nội bộ
+  final String _apiBaseUrl =
+      dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
+
+  @override
+  void dispose() {
+    _soTheController.dispose();
+    super.dispose();
+  }
+
+  // ===== HÀM ĐĂNG NHẬP =====
   Future<void> _handleLogin() async {
     setState(() => _isLoading = true);
 
@@ -34,62 +49,90 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      final url = Uri.parse('$_apiBaseUrl/api/auth/login');
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'mUserID': soThe}),
-          )
-          .timeout(const Duration(seconds: 10));
+      // BƯỚC 1: KIỂM TRA DATABASE CỤC BỘ
+      final db = await DatabaseHelper().database;
+      final List<Map<String, dynamic>> localUser = await db.query(
+        'VmlPersion',
+        columns: ['nguoiThaoTac'],
+        where: 'mUserID = ?',
+        whereArgs: [soThe],
+      );
 
-      if (!mounted) return;
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200) {
-        // ✅ Lưu thông tin đăng nhập
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('soThe', soThe);
-        await prefs.setString('factory', _selectedFactory);
-        final userName = data['userData']['UserName'] as String;
-        AuthService().login(soThe, userName);
-
-        /*NotificationService().showToast(
-          context: context,
-          message: data['message'] ?? 'Đăng nhập thành công!',
-          type: ToastType.success,
-        );*/
-
-        // Đợi nhẹ cho toast hiện xong
-        await Future.delayed(const Duration(seconds: 4));
-        if (!mounted) return;
-        _soTheController.clear();
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else {
-        NotificationService().showToast(
-          context: context,
-          message: data['message'] ?? 'Số thẻ không tồn tại.',
-          type: ToastType.error,
-        );
+      if (localUser.isEmpty) {
+        throw Exception(
+            'Số thẻ không tồn tại.\nVui lòng kết nối mạng và thử lại (để đồng bộ).');
       }
-    } catch (_) {
+
+      // BƯỚC 2: ĐĂNG NHẬP THÀNH CÔNG (OFFLINE)
+      final userName = localUser.first['nguoiThaoTac'] as String;
+
+      // Lưu vào AuthService (cho AppBar)
+      AuthService().login(soThe, userName);
+
+      // Lưu vào SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('soThe', soThe);
+      await prefs.setString('factory', _selectedFactory);
       if (!mounted) return;
       NotificationService().showToast(
         context: context,
-        message: 'Lỗi kết nối: Không thể kết nối tới server.',
+        message: 'Đăng nhập thành công! Xin chào $userName 👋',
+        type: ToastType.success,
+      );
+
+      // BƯỚC 3: KIỂM TRA MẠNG VÀ SERVER BACKEND (LAN)
+      if (!mounted) return;
+
+      final connectivityResults = await Connectivity().checkConnectivity();
+      final hasNetwork = connectivityResults.isNotEmpty &&
+          !connectivityResults.contains(ConnectivityResult.none);
+
+      if (hasNetwork) {
+        // Kiểm tra server LAN có phản hồi không
+        final serverOk = await _canReachLocalServer('$_apiBaseUrl/api/ping');
+        if (serverOk) {
+          if (kDebugMode) print('✅ Kết nối server nội bộ OK. Bắt đầu đồng bộ...');
+          // Chạy đồng bộ ngầm
+          SyncService().syncAllData().catchError((e) {
+            if (kDebugMode) print('Lỗi đồng bộ ngầm: $e');
+          });
+        } else {
+          if (kDebugMode) print('⚠️ Có mạng nhưng không kết nối được server backend.');
+        }
+      } else {
+        if (kDebugMode) print('⚠️ Không có kết nối mạng.');
+      }
+
+      // BƯỚC 4: CHUYỂN TRANG
+      await Future.delayed(const Duration(seconds: 4));
+      if (!mounted) return;
+      _soTheController.clear();
+      Navigator.of(context).pushReplacementNamed('/home');
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService().showToast(
+        context: context,
+        message: e.toString().replaceFirst("Exception: ", ""),
         type: ToastType.error,
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (mounted) setState(() => _isLoading = false);
   }
 
-  @override
-  void dispose() {
-    _soTheController.dispose();
-    super.dispose();
+  // ===== HÀM KIỂM TRA SERVER LAN =====
+  Future<bool> _canReachLocalServer(String serverUrl) async {
+    try {
+      final response = await http
+          .get(Uri.parse(serverUrl))
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
+  // ===== GIAO DIỆN =====
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,13 +198,20 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Đăng nhập',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+          Text(
+            'Đăng nhập',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
           const SizedBox(height: 32),
-          Text('Số thẻ',
-              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+          Text(
+            'Số thẻ',
+            style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _soTheController,
