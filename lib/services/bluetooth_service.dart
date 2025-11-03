@@ -18,6 +18,10 @@ class BluetoothService {
   final ValueNotifier<String> status = ValueNotifier('Sẵn sàng');
   final ValueNotifier<double> currentWeight = ValueNotifier(0.0);
   final ValueNotifier<bool> isScanning = ValueNotifier(false);
+  
+  void setSimulatedWeight(double weight) {
+    currentWeight.value = weight;
+  }
 
   BluetoothDevice? lastConnectedDevice;
   final Map<String, BluetoothDevice> _scannedDevices = {};

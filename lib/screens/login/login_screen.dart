@@ -54,11 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
         final userName = data['userData']['UserName'] as String;
         AuthService().login(soThe, userName);
 
-        NotificationService().showToast(
+        /*NotificationService().showToast(
           context: context,
           message: data['message'] ?? 'Đăng nhập thành công!',
           type: ToastType.success,
-        );
+        );*/
 
         // Đợi nhẹ cho toast hiện xong
         await Future.delayed(const Duration(seconds: 4));

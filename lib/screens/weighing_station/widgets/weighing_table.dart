@@ -143,8 +143,8 @@ class WeighingTable extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: Row(
                 children: [
-                  Text('OVNO : $activeOVNO', style: summaryStyle),
-                  const Spacer(flex: 1),
+                  //Text('OVNO : $activeOVNO', style: summaryStyle),
+                  //const Spacer(flex: 1),
                   const Text('Số lô tổng: ---', style: summaryStyle),
                   const Spacer(flex: 1),
 

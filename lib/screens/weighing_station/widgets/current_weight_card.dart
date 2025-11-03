@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../services/bluetooth_service.dart';
 
-class CurrentWeightCard extends StatelessWidget {
+class CurrentWeightCard extends StatefulWidget {
   final BluetoothService bluetoothService;
   final double minWeight;
   final double maxWeight;
@@ -16,76 +16,141 @@ class CurrentWeightCard extends StatelessWidget {
   });
 
   @override
+  State<CurrentWeightCard> createState() => _CurrentWeightCardState();
+}
+  class _CurrentWeightCardState extends State<CurrentWeightCard> {
+  // 2. Thêm Controller cho ô Test
+  final TextEditingController _testWeightController = TextEditingController();
+
+  @override
+  void dispose() {
+    _testWeightController.dispose();
+    super.dispose();
+  }
+
+  void _onTestWeightChanged(String text) {
+    final double? weight = double.tryParse(text.trim());
+    if (weight != null) {
+      // GỌI HÀM CỦA SERVICE
+      widget.bluetoothService.setSimulatedWeight(weight);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ValueListenableBuilder<double>(
-          valueListenable: bluetoothService.currentWeight,
+          valueListenable: widget.bluetoothService.currentWeight,
           builder: (context, currentWeight, child) {
-            final bool isInRange = (currentWeight >= minWeight) && (currentWeight <= maxWeight);
-            final Color statusColor = isInRange ? Colors.green : Colors.red;
-            final double deviationPercent = (khoiLuongMe == 0)
+            final bool isInRange = (currentWeight >= widget.minWeight) && (currentWeight <= widget.maxWeight);
+            final Color statusColor = (isInRange || widget.minWeight == 0.0) ? Colors.green : Colors.red;
+            final double deviationPercent = (widget.khoiLuongMe == 0)
                 ? 0
-                : ((currentWeight - khoiLuongMe) / khoiLuongMe) * 100;
+                : ((currentWeight - widget.khoiLuongMe) / widget.khoiLuongMe) * 100;
             final String deviationString =
                 '${deviationPercent > 0 ? '+' : ''}${deviationPercent.toStringAsFixed(1)}%';
+            // --- (Kết thúc logic) ---
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header với MIN/MAX ở góc phải
+                const Text('Trọng lượng hiện tại',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54)),
+                const SizedBox(height: 16),
+                
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Trọng lượng hiện tại',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    
-                  ],
-                ),
-                const SizedBox(height: 8),
-                
-                // Trọng lượng hiện tại
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      currentWeight.toStringAsFixed(3),
-                      style: const TextStyle(fontSize: 60, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('Kg', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    // Số cân
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          'MIN: ${minWeight.toStringAsFixed(2)} KG',
+                          currentWeight.toStringAsFixed(3),
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 60,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Color(0xFF1E88E5),
                           ),
                         ),
-                        const SizedBox(width: 30),
-                        Text(
-                          'MAX: ${maxWeight.toStringAsFixed(2)} KG',
-                          style: const TextStyle(
-                            fontSize: 20,
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Kg',
+                          style: TextStyle(
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Color(0xFF1E88E5),
                           ),
                         ),
                       ],
                     ),
-                const SizedBox(height: 30),
+                    const Spacer(), // Đẩy ô test sang phải
+                    
+                    // Ô Test
+                    SizedBox(
+                      width: 150, // Giới hạn chiều rộng
+                      child: TextField(
+                        controller: _testWeightController,
+                        onChanged: _onTestWeightChanged, // Gọi hàm khi gõ
+                        textAlign: TextAlign.center,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          hintText: 'Nhập (test)',
+                          isDense: true, // Làm cho nó nhỏ gọn
+                          filled: true,
+                          fillColor: Colors.grey[200],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            //borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
+                //const SizedBox(height: 12),
+                const Divider(),
+                //const SizedBox(height: 12),
+                
+                // MIN / MAX
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('MIN', style: TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.bold)),
+                        Text(
+                          '${widget.minWeight.toStringAsFixed(3)} kg',
+                          style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('MAX', style: TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.bold)),
+                        Text(
+                          '${widget.maxWeight.toStringAsFixed(3)} kg',
+                          style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 12),
+                
                 // Chênh lệch
                 Text(
                   'Chênh lệch: $deviationString',
