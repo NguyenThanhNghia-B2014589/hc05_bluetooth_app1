@@ -26,14 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final soThe = prefs.getString('soThe');
-
-    if (!mounted) return;
-
-    if (soThe != null && soThe.isNotEmpty) {
-      Navigator.of(context).pushReplacementNamed('/home');
-    } else {
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   Future<void> _checkPermissions() async {

@@ -165,134 +165,150 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   // Widget layout chính
   Widget _buildLayout() {
   // Xác định màu nền dựa trên loại cân
-  final bool isNhap = _controller.selectedWeighingType == WeighingType.nhap;
-  final Color pageBackgroundColor = isNhap
-      ? const Color.fromARGB(255, 173, 207, 241)  // Xanh lá nhạt cho Nhập
-      : const Color.fromARGB(255, 173, 207, 241); // Xanh dương nhạt cho Xuất
+    final bool isNhap = _controller.selectedWeighingType == WeighingType.nhap;
+    final Color pageBackgroundColor = isNhap
+        ? const Color.fromARGB(134, 74, 207, 140)  // Xám nhạt cho Nhập
+        : const Color.fromARGB(255, 173, 207, 241); // Xanh dương nhạt cho Xuất
 
-  return Container(
-    color: pageBackgroundColor, // Đổi màu nền cả trang
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Trạm Cân',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+    return Container(
+      color: pageBackgroundColor, // Nền toàn trang
+      width: double.infinity,
+      height: double.infinity,
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height, // đảm bảo kéo dài đủ màn hình
           ),
-          const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Cột bên trái
-              Expanded(
-                flex: 2,
-                child: CurrentWeightCard(
-                  bluetoothService: _bluetoothService,
-                  minWeight: _controller.minWeight,
-                  maxWeight: _controller.maxWeight,
-                  khoiLuongMe: _controller.khoiLuongMe,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Trạm Cân',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 24),
-              // Cột bên phải
-              Expanded(
-                flex: 3,
-                child: Column(
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        // Dropdown %
-                        ActionBar(
-                          selectedPercentage: _controller.selectedPercentage,
-                          onPercentageChanged: _controller.updatePercentage,
-                        ),
-                        const SizedBox(width: 16),
-                        // Dropdown Nhập/Xuất (đã styled)
-                        _buildWeighingTypeDropdown(),
-                      ],
+                    // Cột bên trái
+                    Expanded(
+                      flex: 2,
+                      child: CurrentWeightCard(
+                        bluetoothService: _bluetoothService,
+                        minWeight: _controller.minWeight,
+                        maxWeight: _controller.maxWeight,
+                        khoiLuongMe: _controller.khoiLuongMe,
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    ScanInputField(
-                      controller: _scanTextController,
-                      onScan: (code) => _controller.handleScan(context, code),
-                    ),
-                    const SizedBox(height: 20),
-                    ValueListenableBuilder<double>(
-                      valueListenable: _bluetoothService.currentWeight,
-                      builder: (context, currentWeight, child) {
-                        final bool isInRange = (currentWeight >= _controller.minWeight) &&
-                            (currentWeight <= _controller.maxWeight) &&
-                            _controller.minWeight > 0;
-                        
-                        final Color buttonColor = isInRange ? Colors.green : const Color(0xFFE8EAF6);
-                        final Color textColor = isInRange ? Colors.white : Colors.indigo;
-
-                        return SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              if (_controller.khoiLuongMe == 0.0) {
-                                NotificationService().showToast(
-                                  context: context,
-                                  message: 'Vui lòng scan mã để cân!',
-                                  type: ToastType.info,
-                                );
-                                return;
-                              }
-                              
-                              final bool success = await _controller.completeCurrentWeighing(
-                                context,
-                                currentWeight,
-                              );
-
-                              if (success) {
-                                _scanTextController.clear();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: buttonColor,
-                              foregroundColor: textColor,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                    const SizedBox(width: 24),
+                    // Cột bên phải
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              ActionBar(
+                                selectedPercentage: _controller.selectedPercentage,
+                                onPercentageChanged: _controller.updatePercentage,
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                              minimumSize: const Size(double.infinity, 48),
-                            ),
-                            child: const Text('Hoàn tất', style: TextStyle(fontSize: 30)),
+                              const SizedBox(width: 16),
+                              _buildWeighingTypeDropdown(),
+                            ],
                           ),
-                        );
-                      },
+                          const SizedBox(height: 20),
+                          ScanInputField(
+                            controller: _scanTextController,
+                            onScan: (code) =>
+                                _controller.handleScan(context, code),
+                          ),
+                          const SizedBox(height: 20),
+                          ValueListenableBuilder<double>(
+                            valueListenable: _bluetoothService.currentWeight,
+                            builder: (context, currentWeight, child) {
+                              final bool isInRange =
+                                  (currentWeight >= _controller.minWeight) &&
+                                      (currentWeight <= _controller.maxWeight) &&
+                                      _controller.minWeight > 0;
+
+                              final Color buttonColor = isInRange
+                                  ? Colors.green
+                                  : const Color(0xFFE8EAF6);
+                              final Color textColor = isInRange
+                                  ? Colors.white
+                                  : Colors.indigo;
+
+                              return SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    if (_controller.khoiLuongMe == 0.0) {
+                                      NotificationService().showToast(
+                                        context: context,
+                                        message: 'Vui lòng scan mã để cân!',
+                                        type: ToastType.info,
+                                      );
+                                      return;
+                                    }
+
+                                    final bool success =
+                                        await _controller.completeCurrentWeighing(
+                                      context,
+                                      currentWeight,
+                                    );
+
+                                    if (success) {
+                                      _scanTextController.clear();
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: buttonColor,
+                                    foregroundColor: textColor,
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                    minimumSize:
+                                        const Size(double.infinity, 48),
+                                  ),
+                                  child: const Text('Hoàn tất',
+                                      style: TextStyle(fontSize: 30)),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                WeighingTable(
+                  records: _controller.records,
+                  weighingType: _controller.selectedWeighingType,
+                  activeOVNO: _controller.activeOVNO,
+                  activeMemo: _controller.activeMemo,
+                  totalTargetQty: _controller.activeTotalTargetQty,
+                  totalNhap: _controller.activeTotalNhap,
+                  totalXuat: _controller.activeTotalXuat,
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          WeighingTable(
-            records: _controller.records,
-            weighingType: _controller.selectedWeighingType,
-            activeOVNO: _controller.activeOVNO,
-            activeMemo: _controller.activeMemo,
-            totalTargetQty: _controller.activeTotalTargetQty,
-            totalNhap: _controller.activeTotalNhap,
-            totalXuat: _controller.activeTotalXuat,
-          ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }

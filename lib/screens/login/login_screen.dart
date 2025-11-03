@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/notification_service.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -50,6 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('soThe', soThe);
         await prefs.setString('factory', _selectedFactory);
+        final userName = data['userData']['UserName'] as String;
+        AuthService().login(soThe, userName);
 
         NotificationService().showToast(
           context: context,
@@ -60,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Đợi nhẹ cho toast hiện xong
         await Future.delayed(const Duration(seconds: 4));
         if (!mounted) return;
+        _soTheController.clear();
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
         NotificationService().showToast(
@@ -169,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 32),
           DropdownButtonHideUnderline(
             child: DropdownButtonFormField<String>(
-              value: _selectedFactory,
+              initialValue: _selectedFactory,
               icon: const Icon(Icons.factory_outlined),
               decoration: InputDecoration(
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),

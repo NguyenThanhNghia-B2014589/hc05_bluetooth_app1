@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
 import 'bluetooth_status_action.dart';
+import '../services/auth_service.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -35,43 +36,54 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       // Actions cố định cho layout này
       actions: [
         PopupMenuButton<String>(
-          // Hàm xử lý khi chọn "Đăng xuất"
           onSelected: (value) {
             if (value == 'logout') {
-              // 1. Ngắt kết nối Bluetooth (nếu đang kết nối)
               bluetoothService.disconnect();
-              
-              // 2. Quay về trang login và xóa tất cả các màn hình cũ
+              AuthService().logout();
               Navigator.of(context).pushNamedAndRemoveUntil(
                 '/login', 
-                (Route<dynamic> route) => false // Xóa hết stack
+                (Route<dynamic> route) => false
               );
             }
           },
-          // Icon hiển thị trên AppBar
-          icon: const Icon(Icons.person, color: Colors.black54, size: 30.0,), 
-          tooltip: 'Tuy chọn',
-          // Hàm này xây dựng các mục trong menu
+          icon: const Icon(Icons.person, color: Colors.black, size: 30.0,), // Icon Người
+          tooltip: 'Tùy chọn',
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            
-            // Mục "Đăng xuất"
             PopupMenuItem<String>(
               value: 'logout',
               child: Row(
                 children: [
-                  Icon(Icons.logout, color: Colors.red.shade700), // Icon đăng xuất
+                  Icon(Icons.logout, color: Colors.red.shade700),
                   const SizedBox(width: 12),
                   const Text('Đăng xuất'),
                 ],
               ),
             ),
-
-            // Bạn có thể thêm các mục khác ở đây nếu muốn
-            // PopupMenuItem<String>(
-            //   value: 'settings',
-            //   child: Row(children: [Icon(Icons.settings), Text('Cài đặt')]),
-            // ),
           ],
+        ),
+
+        // --- 2. Tên (AnimatedBuilder) ---
+        AnimatedBuilder(
+          animation: AuthService(), 
+          builder: (context, child) {
+            final auth = AuthService();
+            if (!auth.isLoggedIn) {
+              return const SizedBox.shrink(); // Ẩn nếu chưa đăng nhập
+            }
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Center(
+                child: Text(
+                  '${auth.userName} (${auth.mUserID})',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(width: 8),
         BluetoothStatusAction(bluetoothService: bluetoothService),
