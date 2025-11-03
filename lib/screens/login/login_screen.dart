@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hc05_bluetooth_app/screens/weighing_station/controllers/weighing_station_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -110,11 +111,27 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).pushReplacementNamed('/home');
     } catch (e) {
       if (!mounted) return;
-      NotificationService().showToast(
+      String errorMessage;
+      if (e is WeighingException) {
+        // Đây là lỗi nghiệp vụ (Vd: "Số thẻ không tồn tại...")
+        errorMessage = e.message;
+      } else {
+        // Đây là các lỗi kỹ thuật (SocketException, Timeout, API 500...)
+        errorMessage = 'Lỗi kết nối máy chủ. Vui lòng kiểm tra lại mạng và thử lại.';
+        
+        // In lỗi chi tiết ra console cho bạn (dev) xem
+        if (kDebugMode) {
+          print('--- LỖI ĐĂNG NHẬP/ĐỒNG BỘ CHI TIẾT ---');
+          print(e);
+          print('------------------------------------');
+        }
+      }
+        NotificationService().showToast(
         context: context,
-        message: e.toString().replaceFirst("Exception: ", ""),
+        message: errorMessage, // <-- Hiển thị thông báo thân thiện
         type: ToastType.error,
-      );
+        );
+        
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

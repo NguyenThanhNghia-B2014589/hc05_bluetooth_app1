@@ -66,4 +66,35 @@ class DatabaseHelper {
       )
     ''');
   }
+
+  /// Lấy tất cả các bản ghi đang chờ đồng bộ (trong HistoryQueue)
+  /// và JOIN với cache để lấy thông tin chi tiết.
+  Future<List<Map<String, dynamic>>> getPendingSyncRecords() async {
+    final db = await database;
+    
+    // Query này sẽ JOIN Queue với 3 bảng cache
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+      SELECT 
+        H.id,
+        H.maCode,
+        H.khoiLuongCan,
+        H.thoiGianCan,
+        H.loai,
+        S.package as soLo,
+        W.tenPhoiKeo,
+        P.nguoiThaoTac
+      FROM 
+        HistoryQueue AS H
+      LEFT JOIN 
+        VmlWorkS AS S ON H.maCode = S.maCode
+      LEFT JOIN 
+        VmlWork AS W ON S.ovNO = W.ovNO
+      LEFT JOIN 
+        VmlPersion AS P ON S.mUserID = P.mUserID
+      ORDER BY 
+        H.id ASC
+    ''');
+    
+    return result;
+  }
 }

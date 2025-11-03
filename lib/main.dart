@@ -7,6 +7,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/history/history_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'package:hc05_bluetooth_app/screens/pending_sync/pending_sync_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         '/weighing_station': (context) => const WeighingStationScreen(),
         '/history': (context) => const HistoryScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/pending_sync': (context) => const PendingSyncScreen(),
       },
     );
   }

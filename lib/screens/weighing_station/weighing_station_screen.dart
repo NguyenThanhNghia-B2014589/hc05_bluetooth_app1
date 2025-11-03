@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hc05_bluetooth_app/services/sync_service.dart';
 import '../../services/bluetooth_service.dart';
 import '../../services/notification_service.dart';
 import './controllers/weighing_station_controller.dart';
@@ -21,6 +22,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
   // --- SỬ DỤNG DỊCH VỤ BLUETOOTH CHUNG ---
   final BluetoothService _bluetoothService = BluetoothService();
   late final WeighingStationController _controller;
+  final SyncService _syncService = SyncService();
 
   final TextEditingController _scanTextController = TextEditingController(); // CONTROLLER CHO SCAN INPUT FIELD
 
@@ -44,7 +46,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
     _bluetoothService.connectedDevice.addListener(_onConnectionChange);
-    _controller.syncPendingData();
+    _syncService.syncHistoryQueue();
   }
 
   @override

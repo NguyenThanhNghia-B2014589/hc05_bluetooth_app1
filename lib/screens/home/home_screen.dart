@@ -90,6 +90,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.of(context).pushNamed('/history');
                     },
                   ),
+                  _buildMenuButton(
+                    context: context,
+                    iconPath: 'lib/assets/images/sync.png',
+                    label: 'Dữ liệu chờ', // (Hoặc 'Đồng bộ Offline')
+                    onPressed: () {
+                      // Đi đến trang PendingSyncScreen
+                      Navigator.of(context).pushNamed('/pending_sync');
+                    },
+                  ),
                 ],
               ),
             ),

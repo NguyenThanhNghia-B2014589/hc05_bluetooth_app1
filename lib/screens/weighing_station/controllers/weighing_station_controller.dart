@@ -10,6 +10,7 @@ import '../../../data/weighing_data.dart';
 import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../services/sync_service.dart';
 
 
 enum WeighingType { nhap, xuat }
@@ -28,6 +29,7 @@ class WeighingStationController with ChangeNotifier {
   final String _apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
 
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final SyncService _syncService = SyncService();
 
   String? _activeOVNO;
   String? _activeMemo;
@@ -283,7 +285,7 @@ class WeighingStationController with ChangeNotifier {
       );
 
       // THỬ ĐỒNG BỘ (NGẦM)
-      syncPendingData(); 
+      _syncService.syncHistoryQueue(); 
 
       notifyListeners();
       return true;
@@ -312,75 +314,4 @@ class WeighingStationController with ChangeNotifier {
     }
   }
 
-Future<void> syncPendingData() async {
-    if (kDebugMode) {
-      print('🔄 Bắt đầu quá trình đồng bộ...');
-    }
-    final db = await _dbHelper.database;
-    
-    // 1. Lấy tất cả record đang chờ trong Queue
-    final List<Map<String, dynamic>> pendingRecords = await db.query('HistoryQueue');
-
-    if (pendingRecords.isEmpty) {
-      if (kDebugMode) {
-        print('✅ Không có gì để đồng bộ.');
-      }
-      return;
-    }
-
-    if (kDebugMode) {
-      print('🔄 Tìm thấy ${pendingRecords.length} record cần đồng bộ.');
-    }
-
-    // 2. Lặp qua từng record và gửi lên server
-    for (var record in pendingRecords) {
-      final int localId = record['id'];
-      
-      try {
-        final url = Uri.parse('$_apiBaseUrl/api/complete');
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            // Gửi dữ liệu từ bảng Queue
-            'maCode': record['maCode'],
-            'khoiLuongCan': record['khoiLuongCan'],
-            'thoiGianCan': record['thoiGianCan'],
-            'loai': record['loai'],
-          }),
-        ).timeout(const Duration(seconds: 10));
-
-        if (response.statusCode == 201) {
-          // 3. THÀNH CÔNG: Xóa record khỏi Queue
-          await db.delete('HistoryQueue', where: 'id = ?', whereArgs: [localId]);
-          if (kDebugMode) {
-            print('✅ Đã đồng bộ thành công ID: $localId');
-          }
-        
-        } else if (response.statusCode >= 400 && response.statusCode < 500) {
-          // 4. LỖI DỮ LIỆU (4xx): Mã này đã cân, hoặc vượt tồn kho...
-          // Dữ liệu này "xấu", xóa đi để không gửi lại
-          if (kDebugMode) {
-            print('❌ Lỗi 4xx khi đồng bộ ID: $localId. Xóa khỏi queue.');
-          }
-          await db.delete('HistoryQueue', where: 'id = ?', whereArgs: [localId]);
-        
-        } else {
-          // 5. LỖI SERVER (5xx):
-          // Không xóa, giữ lại để thử lại lần sau
-          if (kDebugMode) {
-            print('⚠️ Lỗi 5xx khi đồng bộ ID: $localId. Sẽ thử lại sau.');
-          }
-        }
-
-      } catch (e) {
-        // 6. LỖI MẠNG:
-        // Không xóa, giữ lại để thử lại lần sau
-        if (kDebugMode) {
-          print('🌐 Lỗi mạng khi đồng bộ. Sẽ thử lại sau.');
-        }
-        break; // Dừng vòng lặp nếu mất mạng
-      }
-    }
-  }
 }
