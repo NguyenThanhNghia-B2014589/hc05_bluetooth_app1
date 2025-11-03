@@ -44,6 +44,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
     _bluetoothService.connectedDevice.addListener(_onConnectionChange);
+    _controller.syncPendingData();
   }
 
   @override
