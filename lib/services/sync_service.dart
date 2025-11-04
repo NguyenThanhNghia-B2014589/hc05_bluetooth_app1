@@ -49,6 +49,8 @@ class SyncService {
           'package': item['package'],
           'mUserID': item['mUserID']?.toString(),
           'qtys': item['qtys'],
+          'realQty': item['realQty'],
+          'mixTime': item['mixTime'],
         }, conflictAlgorithm: ConflictAlgorithm.replace);
         
         // Thêm vào VmlWork

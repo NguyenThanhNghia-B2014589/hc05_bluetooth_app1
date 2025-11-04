@@ -34,6 +34,8 @@ class DatabaseHelper {
         package INTEGER,
         mUserID TEXT,
         qtys REAL
+        realQty REAL,
+        mixTime TEXT
       )
     ''');
     

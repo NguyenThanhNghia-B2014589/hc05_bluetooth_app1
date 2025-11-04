@@ -278,15 +278,24 @@ class WeighingStationController with ChangeNotifier {
 
       // KIỂM TRA OFFLINE
       if (loaiCan == 'nhap') {
+        // 1. Kiểm tra "Sổ nợ" (HistoryQueue)
         final List<Map<String, dynamic>> existingInQueue = await db.query(
           'HistoryQueue',
           where: 'maCode = ? AND loai = ?',
           whereArgs: [currentRecord.maCode, 'nhap'],
         );
-
         if (existingInQueue.isNotEmpty) {
-          // NÉM LỖI NGHIỆP VỤ
           throw WeighingException('Mã này đã được cân (đang chờ đồng bộ).');
+        }
+
+        // 2. Kiểm tra "Cache" (VmlWorkS)
+        final List<Map<String, dynamic>> existingInCache = await db.query(
+          'VmlWorkS',
+          where: 'maCode = ? AND realQty IS NOT NULL', // Đã có KL cân
+          whereArgs: [currentRecord.maCode],
+        );
+        if (existingInCache.isNotEmpty) {
+          throw WeighingException('Mã này đã được cân (đã đồng bộ).');
         }
       }
 
