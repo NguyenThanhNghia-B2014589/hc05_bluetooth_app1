@@ -11,6 +11,8 @@ class WeighingTable extends StatelessWidget {
   final double totalTargetQty;
   final double totalNhap;
   final double totalXuat;
+  final int xWeighed;
+  final int yTotal;
 
   const WeighingTable({
     super.key,
@@ -21,6 +23,8 @@ class WeighingTable extends StatelessWidget {
     required this.totalTargetQty,
     required this.totalNhap,
     required this.totalXuat,
+    required this.xWeighed,
+    required this.yTotal,
   });
 
   @override
@@ -143,9 +147,9 @@ class WeighingTable extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: Row(
                 children: [
-                  //Text('OVNO : $activeOVNO', style: summaryStyle),
-                  //const Spacer(flex: 1),
-                  const Text('Số lô tổng: ---', style: summaryStyle),
+                  Text('OVNO : $activeOVNO', style: summaryStyle),
+                  const Spacer(flex: 1),
+                  Text('Số mẻ: $xWeighed / $yTotal', style: summaryStyle),
                   const Spacer(flex: 1),
 
                   // Sửa 'Nhập'

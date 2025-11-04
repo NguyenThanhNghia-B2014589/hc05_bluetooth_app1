@@ -96,7 +96,7 @@ class CurrentWeightCard extends StatefulWidget {
                     
                     // Ô Test
                     SizedBox(
-                      width: 150, // Giới hạn chiều rộng
+                      width: 130, // Giới hạn chiều rộng
                       child: TextField(
                         controller: _testWeightController,
                         onChanged: _onTestWeightChanged, // Gọi hàm khi gõ

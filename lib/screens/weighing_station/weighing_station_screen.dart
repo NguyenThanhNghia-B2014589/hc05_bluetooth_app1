@@ -305,6 +305,8 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                   totalTargetQty: _controller.activeTotalTargetQty,
                   totalNhap: _controller.activeTotalNhap,
                   totalXuat: _controller.activeTotalXuat,
+                  xWeighed: _controller.activeXWeighed,
+                  yTotal: _controller.activeYTotal,
                 ),
                 const SizedBox(height: 24),
               ],

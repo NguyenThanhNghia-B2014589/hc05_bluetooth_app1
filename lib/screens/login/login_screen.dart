@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
         errorMessage = e.message;
       } else {
         // Đây là các lỗi kỹ thuật (SocketException, Timeout, API 500...)
-        errorMessage = 'Lỗi kết nối máy chủ. Vui lòng kiểm tra lại mạng và thử lại.';
+        errorMessage = 'Số thẻ không tồn tại hoặc chưa đồng bộ. Vui lòng thử lại hoặc kết nối mạng.';
         
         // In lỗi chi tiết ra console cho bạn (dev) xem
         if (kDebugMode) {

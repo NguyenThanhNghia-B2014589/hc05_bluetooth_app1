@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +10,7 @@ import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../services/sync_service.dart';
+import '../../../services/server_status_service.dart';
 
 
 enum WeighingType { nhap, xuat }
@@ -30,6 +30,7 @@ class WeighingStationController with ChangeNotifier {
 
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final SyncService _syncService = SyncService();
+  final ServerStatusService _serverStatus = ServerStatusService();
 
   String? _activeOVNO;
   String? _activeMemo;
@@ -56,6 +57,11 @@ class WeighingStationController with ChangeNotifier {
   double _maxWeight = 0.0;
   double get minWeight => _minWeight;
   double get maxWeight => _maxWeight;
+  int _activeXWeighed = 0; // Số mẻ đã cân (X)
+  int _activeYTotal = 0;   // Tổng số mẻ (Y)
+  int get activeXWeighed => _activeXWeighed;
+  int get activeYTotal => _activeYTotal;
+
   WeighingType _selectedWeighingType = WeighingType.nhap;
   WeighingType get selectedWeighingType => _selectedWeighingType;
 
@@ -88,64 +94,93 @@ class WeighingStationController with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> _scanFromCache(Database db, String code) async {
+    final List<Map<String, dynamic>> localData = await db.rawQuery(
+      '''
+      SELECT S.maCode, S.ovNO, S.package, S.mUserID, S.qtys,
+             W.tenPhoiKeo, W.soMay, W.memo, W.totalTargetQty,
+             P.nguoiThaoTac, S.package as soLo
+      FROM VmlWorkS AS S
+      LEFT JOIN VmlWork AS W ON S.ovNO = W.ovNO
+      LEFT JOIN VmlPersion AS P ON S.mUserID = P.mUserID
+      WHERE S.maCode = ?
+      ''', [code]
+    );
 
+    if (localData.isNotEmpty) {
+      if (kDebugMode) {
+        print('🔍 Tìm thấy mã $code trong cache cục bộ.');
+      }
+      return localData.first;
+    } else {
+      // Nếu không tìm thấy trong cache
+      throw WeighingException('Mã "$code" không có trong dữ liệu offline.');
+    }
+  }
+  
   // --- HÀM handleScan ---
   Future<void> handleScan(BuildContext context, String code) async {
-    Map<String, dynamic> data; // Di chuyển data ra ngoài
+    Map<String, dynamic> data; // Biến để lưu kết quả cuối cùng
+    final db = await _dbHelper.database;
+
+    // Kiểm tra trạng thái server (từ service đã chạy nền)
+    final bool isServerConnected = _serverStatus.isServerConnected;
+
     try {
-      final db = await _dbHelper.database;
-      
-      final List<Map<String, dynamic>> localData = await db.rawQuery(
-        '''
-        SELECT S.maCode, S.ovNO, S.package, S.mUserID, S.qtys,
-               W.tenPhoiKeo, W.soMay, W.memo, W.totalTargetQty,
-               P.nguoiThaoTac, S.package as soLo
-        FROM VmlWorkS AS S
-        LEFT JOIN VmlWork AS W ON S.ovNO = W.ovNO
-        LEFT JOIN VmlPersion AS P ON S.mUserID = P.mUserID
-        WHERE S.maCode = ?
-        ''', [code]
-      );
-
-      if (localData.isNotEmpty) {
+      if (isServerConnected) {
+        // --- 1. CHẾ ĐỘ ONLINE (Ưu tiên API) ---
         if (kDebugMode) {
-          print('🔍 Tìm thấy mã $code trong cache cục bộ.');
+          print('🛰️ Online Mode: Đang gọi API...');
         }
-        data = localData.first;
+        try {
+          final url = Uri.parse('$_apiBaseUrl/api/scan/$code');
+          final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            data = json.decode(response.body);
+            if (kDebugMode) {
+              print('🛰️ API thành công, đang cache dữ liệu...');
+            }
+
+            // Cập nhật (hoặc thêm mới) cache
+            await db.insert('VmlWorkS', {
+              'maCode': data['maCode'], 'ovNO': data['ovNO'], 'package': data['package'],
+              'mUserID': data['mUserID'].toString(), 'qtys': data['qtys'],
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+            await db.insert('VmlWork', {
+              'ovNO': data['ovNO'], 'tenPhoiKeo': data['tenPhoiKeo'], 'soMay': data['soMay'],
+              'memo': data['memo'], 'totalTargetQty': data['totalTargetQty'],
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+            await db.insert('VmlPersion', {
+              'mUserID': data['mUserID'].toString(), 'nguoiThaoTac': data['nguoiThaoTac'],
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+          } else if (response.statusCode == 404) {
+            final errorData = json.decode(response.body);
+            throw WeighingException(errorData['message'] ?? 'Không tìm thấy mã');
+          } else {
+            throw WeighingException('Lỗi server: ${response.statusCode}, thử lại offline...');
+          }
+
+        } catch (e) {
+          // LỖI API (Timeout, 500...): Chuyển sang tìm trong cache (Fallback)
+          if (kDebugMode) {
+            print('⚠️ Lỗi API ($e). Đang thử tìm trong cache cục bộ...');
+          }
+          data = await _scanFromCache(db, code);
+        }
       } else {
+        // --- 2. CHẾ ĐỘ OFFLINE (Chỉ dùng Cache) ---
         if (kDebugMode) {
-          print('🔍 Mã $code không có trong cache, đang gọi API...');
+          print('🔌 Offline Mode: Đang tìm trong cache cục bộ...');
         }
-        final url = Uri.parse('$_apiBaseUrl/api/scan/$code');
-        final response = await http.get(url).timeout(const Duration(seconds: 10));
-        
-        if (response.statusCode == 200) {
-          data = json.decode(response.body);
-
-          // LƯU VÀO CACHE (SQLITE)
-          await db.insert('VmlWorkS', {
-            'maCode': data['maCode'], 'ovNO': data['ovNO'], 'package': data['package'],
-            'mUserID': data['mUserID'].toString(), 'qtys': data['qtys'],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-          
-          await db.insert('VmlWork', {
-            'ovNO': data['ovNO'], 'tenPhoiKeo': data['tenPhoiKeo'], 'soMay': data['soMay'],
-            'memo': data['memo'], 'totalTargetQty': data['totalTargetQty'],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-          
-          await db.insert('VmlPersion', {
-            'mUserID': data['mUserID'].toString(), 'nguoiThaoTac': data['nguoiThaoTac'],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-
-        } else if (response.statusCode == 404) {
-          final errorData = json.decode(response.body);
-          throw WeighingException(errorData['message'] ?? 'Không tìm thấy mã');
-        } else {
-          throw WeighingException('Lỗi server: ${response.statusCode}');
-        }
+        data = await _scanFromCache(db, code);
       }
 
-      // --- CẬP NHẬT UI (SAU KHI ĐÃ CÓ 'data') ---
+      // --- 3. CẬP NHẬT UI (CHUNG) ---
+      // (Code này chạy dù lấy từ API hay Cache)
       if (!context.mounted) return;
 
       if (_activeOVNO == null || _activeOVNO != data['ovNO']) {
@@ -153,8 +188,12 @@ class WeighingStationController with ChangeNotifier {
         _activeMemo = data['memo'];
       }
       _activeTotalTargetQty = (data['totalTargetQty'] as num? ?? 0.0).toDouble();
+      // (totalNhap/Xuat sẽ được cập nhật khi API Scan trả về,
+      // chúng ta cần đảm bảo localData cũng trả về giá trị này nếu có)
       _activeTotalNhap = (data['totalNhapWeighed'] as num? ?? 0.0).toDouble();
       _activeTotalXuat = (data['totalXuatWeighed'] as num? ?? 0.0).toDouble();
+      _activeXWeighed = (data['x_WeighedNhap'] as num? ?? 0).toInt();
+      _activeYTotal = (data['y_TotalPackages'] as num? ?? 0).toInt();
       _standardWeight = (data['qtys'] as num).toDouble();
       _calculateMinMax();
 
@@ -166,7 +205,7 @@ class WeighingStationController with ChangeNotifier {
         qtys: (data['qtys'] as num).toDouble(),
         soLo: data['soLo'],
         tenPhoiKeo: data['tenPhoiKeo'],
-        soMay: data['soMay'].toString(), // Sửa lại
+        soMay: data['soMay'].toString(),
         nguoiThaoTac: data['nguoiThaoTac'],
       );
 
@@ -180,27 +219,15 @@ class WeighingStationController with ChangeNotifier {
         message: 'Scan mã $code thành công!',
         type: ToastType.success,
       );
-      
-    } on TimeoutException catch (e) {
-      if (kDebugMode) print('⏱️ Timeout: $e');
-      if (!context.mounted) return;
-      NotificationService().showToast(
-        context: context, message: 'Lỗi: Hết thời gian chờ kết nối!', type: ToastType.error,
-      );
-    } on SocketException catch (e) {
-      if (kDebugMode) print('🔌 Socket Exception: $e');
-      if (!context.mounted) return;
-      NotificationService().showToast(
-        context: context, message: 'Không thể kết nối: Đảm bảo điện thoại và máy tính cùng mạng WiFi.', type: ToastType.error,
-      );
-    } on WeighingException catch (e) { // Bắt lỗi Exception tùy chỉnh
-      if (kDebugMode) print('⚖️ Weighing Error: ${e.message}');
+
+    } on WeighingException catch (e) { // Bắt lỗi (vd: "Không có trong cache")
+      if (kDebugMode) print('⚖️ Lỗi nghiệp vụ: ${e.message}');
       if (!context.mounted) return;
       NotificationService().showToast(
         context: context, message: e.message, type: ToastType.error,
       );
     } catch (e) {
-      if (kDebugMode) print('❌ Unknown Error: $e');
+      if (kDebugMode) print('❌ Lỗi không xác định: $e');
       if (!context.mounted) return;
       NotificationService().showToast(
         context: context, message: 'Lỗi không xác định: $e', type: ToastType.error,

@@ -8,6 +8,8 @@ class SummaryData {
   final double totalTargetQty;
   final double totalNhap;
   final double totalXuat;
+  final int xWeighed;
+  final int yTotal;
 
   SummaryData({
     required this.ovNO,
@@ -15,6 +17,8 @@ class SummaryData {
     required this.totalTargetQty,
     required this.totalNhap,
     required this.totalXuat,
+    required this.xWeighed,
+    required this.yTotal,
   });
 }
 
@@ -121,7 +125,7 @@ class HistoryTable extends StatelessWidget {
                             children: [
                               Text('OVNO : ${summary.ovNO}', style: summaryStyle),
                               const Spacer(flex: 1),
-                              const Text('Số lô tổng: ---', style: summaryStyle), // Vẫn giữ '---'
+                              Text('Số mẻ: ${summary.xWeighed} / ${summary.yTotal}', style: summaryStyle),
                               const Spacer(flex: 1),
                               // Dùng dữ liệu thật
                               Text(
