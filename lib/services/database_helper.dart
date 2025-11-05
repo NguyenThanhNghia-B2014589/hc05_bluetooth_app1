@@ -19,26 +19,24 @@ class DatabaseHelper {
   Future<Database> _initDb() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "weighing_app.db");
-    
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+
+    return await openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
-  // Hàm này chạy LẦN ĐẦU TIÊN khi app cài đặt
   Future _onCreate(Database db, int version) async {
-    // 1. Tạo bảng để cache thông tin (giúp tra cứu offline)
-    // (Chúng ta chỉ cache những gì cần thiết cho việc tra cứu)
     await db.execute('''
       CREATE TABLE VmlWorkS (
         maCode TEXT PRIMARY KEY,
         ovNO TEXT,
         package INTEGER,
         mUserID TEXT,
-        qtys REAL
+        qtys REAL,
         realQty REAL,
-        mixTime TEXT
+        mixTime TEXT,
+        loai TEXT
       )
     ''');
-    
+
     await db.execute('''
       CREATE TABLE VmlWork (
         ovNO TEXT PRIMARY KEY,
@@ -48,7 +46,7 @@ class DatabaseHelper {
         totalTargetQty REAL
       )
     ''');
-    
+
     await db.execute('''
       CREATE TABLE VmlPersion (
         mUserID TEXT PRIMARY KEY,
@@ -56,8 +54,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 2. TẠO BẢNG HÀNG ĐỢI (QUAN TRỌNG NHẤT)
-    // Bảng này lưu các lần cân chưa được gửi lên server
     await db.execute('''
       CREATE TABLE HistoryQueue (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,22 +65,40 @@ class DatabaseHelper {
     ''');
   }
 
-  /// Lấy tất cả các bản ghi đang chờ đồng bộ (trong HistoryQueue)
-  /// và JOIN với cache để lấy thông tin chi tiết.
+  // Tự động thêm cột mới nếu DB cũ không có
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE VmlWorkS ADD COLUMN realQty REAL');
+      await db.execute('ALTER TABLE VmlWorkS ADD COLUMN mixTime TEXT');
+      await db.execute('ALTER TABLE VmlWorkS ADD COLUMN loai TEXT');
+    }
+  }
+
+  /// Lấy thông tin chi tiết của 1 mã code
+  Future<Map<String, dynamic>?> getCodeInfo(String maCode) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT S.maCode, S.ovNO, S.package, S.mUserID, S.qtys,
+             S.realQty, S.mixTime, S.loai,
+             W.tenPhoiKeo, W.soMay, W.memo, W.totalTargetQty,
+             P.nguoiThaoTac, S.package as soLo
+      FROM VmlWorkS AS S
+      LEFT JOIN VmlWork AS W ON S.ovNO = W.ovNO
+      LEFT JOIN VmlPersion AS P ON S.mUserID = P.mUserID
+      WHERE S.maCode = ?
+    ''', [maCode]);
+
+    if (result.isNotEmpty) return result.first;
+    return null;
+  }
+
   Future<List<Map<String, dynamic>>> getPendingSyncRecords() async {
     final db = await database;
-    
-    // Query này sẽ JOIN Queue với 3 bảng cache
-    final List<Map<String, dynamic>> result = await db.rawQuery('''
+
+    return await db.rawQuery('''
       SELECT 
-        H.id,
-        H.maCode,
-        H.khoiLuongCan,
-        H.thoiGianCan,
-        H.loai,
-        S.package as soLo,
-        W.tenPhoiKeo,
-        P.nguoiThaoTac
+        H.id, H.maCode, H.khoiLuongCan, H.thoiGianCan, H.loai,
+        S.package as soLo, W.tenPhoiKeo, P.nguoiThaoTac
       FROM 
         HistoryQueue AS H
       LEFT JOIN 
@@ -96,7 +110,13 @@ class DatabaseHelper {
       ORDER BY 
         H.id ASC
     ''');
-    
-    return result;
+  }
+
+  /// Kiểm tra xem mã đã cân nhập chưa (offline)
+  Future<bool> isCodeAlreadyNhap(String maCode) async {
+    final db = await database;
+    final result = await db.query('VmlWorkS',
+        where: 'maCode = ? AND loai = ?', whereArgs: [maCode, 'nhap']);
+    return result.isNotEmpty;
   }
 }

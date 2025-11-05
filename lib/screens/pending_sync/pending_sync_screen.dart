@@ -5,6 +5,7 @@ import '../../services/database_helper.dart';
 import '../../services/sync_service.dart'; // Import SyncService
 import '../../services/notification_service.dart';
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class PendingSyncScreen extends StatefulWidget {
   const PendingSyncScreen({super.key});
@@ -40,6 +41,21 @@ class _PendingSyncScreenState extends State<PendingSyncScreen> {
   // 2. Chạy đồng bộ thủ công
   Future<void> _runSync() async {
     setState(() => _isSyncing = true);
+    // 1. Kiểm tra mạng ngay lập tức
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (!connectivityResult.contains(ConnectivityResult.wifi) && 
+        !connectivityResult.contains(ConnectivityResult.mobile)) 
+    {
+      if (mounted) {
+        NotificationService().showToast(
+          context: context,
+          message: 'Không có kết nối mạng. Vui lòng thử lại sau.',
+          type: ToastType.error,
+        );
+      }
+      setState(() => _isSyncing = false);
+      return; // Dừng lại, không chạy sync
+    }
     
     try {
       await _syncService.syncHistoryQueue(); // Gọi hàm sync

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hc05_bluetooth_app/screens/weighing_station/controllers/weighing_station_controller.dart';
@@ -25,8 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   // Địa chỉ server nội bộ
-  final String _apiBaseUrl =
-      dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
 
   @override
   void dispose() {
@@ -40,105 +40,128 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final soThe = _soTheController.text.trim();
     if (soThe.isEmpty) {
+      // (Báo lỗi "Vui lòng nhập số thẻ"...)
       NotificationService().showToast(
-        context: context,
-        message: 'Vui lòng nhập số thẻ.',
-        type: ToastType.info,
+        context: context, message: 'Vui lòng nhập số thẻ.', type: ToastType.info,
       );
       setState(() => _isLoading = false);
       return;
     }
 
-    try {
-      // BƯỚC 1: KIỂM TRA DATABASE CỤC BỘ
-      final db = await DatabaseHelper().database;
-      final List<Map<String, dynamic>> localUser = await db.query(
-        'VmlPersion',
-        columns: ['nguoiThaoTac'],
-        where: 'mUserID = ?',
-        whereArgs: [soThe],
-      );
+    // Biến để lưu thông tin user
+    String? userName;
+    String? successMessage;
 
-      if (localUser.isEmpty) {
-        throw Exception(
-            'Số thẻ không tồn tại.\nVui lòng kết nối mạng và thử lại (để đồng bộ).');
+    try {
+      // BƯỚC 1: KIỂM TRA MẠNG
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOnline = connectivityResult.contains(ConnectivityResult.wifi) ||
+                            connectivityResult.contains(ConnectivityResult.mobile);
+
+      if (isOnline) {
+        // --- 2. LOGIC KHI CÓ MẠNG (ONLINE FIRST) ---
+        if (kDebugMode) print('🛰️ Đang đăng nhập Online...');
+        try {
+          final url = Uri.parse('${dotenv.env['API_BASE_URL']}/api/auth/login');
+          final response = await http.post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'mUserID': soThe}),
+          ).timeout(const Duration(seconds: 10));
+
+          if (!mounted) return;
+          final data = json.decode(response.body);
+
+          if (response.statusCode == 200) {
+            // API THÀNH CÔNG
+            userName = data['userData']['UserName'] as String;
+            successMessage = data['message'];
+            
+            // Chạy đồng bộ ngầm (không cần await)
+            _runSync(); 
+
+          } else {
+            // API THẤT BẠI (Vd: 404 - Sai số thẻ)
+            throw WeighingException(data['message'] ?? 'Số thẻ không hợp lệ.');
+          }
+        } catch (e) {
+          // LỖI KHI GỌI API (Vd: Timeout, 500, Mất kết nối...)
+          // -> CHUYỂN SANG KIỂM TRA OFFLINE (FALLBACK)
+          if (kDebugMode) print('⚠️ Lỗi API ($e), đang thử đăng nhập Offline...');
+          userName = await _loginFromCache(soThe);
+          successMessage = 'Đăng nhập Offline thành công! Chào $userName';
+        }
+      } else {
+        // --- 3. LOGIC KHI KHÔNG CÓ MẠNG (OFFLINE FIRST) ---
+        if (kDebugMode) print('🔌 Đang đăng nhập Offline...');
+        userName = await _loginFromCache(soThe);
+        successMessage = 'Đăng nhập Offline thành công! Chào $userName';
       }
 
-      // BƯỚC 2: ĐĂNG NHẬP THÀNH CÔNG (OFFLINE)
-      final userName = localUser.first['nguoiThaoTac'] as String;
-
-      // Lưu vào AuthService (cho AppBar)
-      AuthService().login(soThe, userName);
-
-      // Lưu vào SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
+      // --- 4. XỬ LÝ KẾT QUẢ THÀNH CÔNG (Dù là Online hay Offline) ---
+      AuthService().login(soThe, userName); // Lưu state
+      final prefs = await SharedPreferences.getInstance(); // Lưu SharedPreferences
       await prefs.setString('soThe', soThe);
       await prefs.setString('factory', _selectedFactory);
+
       if (!mounted) return;
       NotificationService().showToast(
         context: context,
-        message: 'Đăng nhập thành công! Xin chào $userName 👋',
+        message: successMessage!,
         type: ToastType.success,
       );
+      await Future.delayed(const Duration(seconds: 3)); // Đợi toast
 
-      // BƯỚC 3: KIỂM TRA MẠNG VÀ SERVER BACKEND (LAN)
-      if (!mounted) return;
-
-      final connectivityResults = await Connectivity().checkConnectivity();
-      final hasNetwork = connectivityResults.isNotEmpty &&
-          !connectivityResults.contains(ConnectivityResult.none);
-
-      if (hasNetwork) {
-        // Kiểm tra server LAN có phản hồi không
-        final serverOk = await _canReachLocalServer('$_apiBaseUrl/api/ping');
-        if (serverOk) {
-          if (kDebugMode) print('✅ Kết nối server nội bộ OK. Bắt đầu đồng bộ...');
-          // Chạy đồng bộ ngầm
-          SyncService().syncAllData().catchError((e) {
-            if (kDebugMode) print('Lỗi đồng bộ ngầm: $e');
-          });
-        } else {
-          if (kDebugMode) print('⚠️ Có mạng nhưng không kết nối được server backend.');
-        }
-      } else {
-        if (kDebugMode) print('⚠️ Không có kết nối mạng.');
-      }
-
-      // BƯỚC 4: CHUYỂN TRANG
-      await Future.delayed(const Duration(seconds: 4));
+      // Chuyển trang
       if (!mounted) return;
       _soTheController.clear();
       Navigator.of(context).pushReplacementNamed('/home');
+
     } catch (e) {
+      // BẮT LỖI (Vd: Sai số thẻ (Online), Không tìm thấy (Offline))
       if (!mounted) return;
-      String errorMessage;
-      if (e is WeighingException) {
-        // Đây là lỗi nghiệp vụ (Vd: "Số thẻ không tồn tại...")
-        errorMessage = e.message;
-      } else {
-        // Đây là các lỗi kỹ thuật (SocketException, Timeout, API 500...)
-        errorMessage = 'Số thẻ không tồn tại hoặc chưa đồng bộ. Vui lòng thử lại hoặc kết nối mạng.';
-        
-        // In lỗi chi tiết ra console cho bạn (dev) xem
-        if (kDebugMode) {
-          print('--- LỖI ĐĂNG NHẬP/ĐỒNG BỘ CHI TIẾT ---');
-          print(e);
-          print('------------------------------------');
-        }
-      }
-        NotificationService().showToast(
+      final String msg = e is WeighingException ? e.message : e.toString().replaceFirst("Exception: ", "");
+      NotificationService().showToast(
         context: context,
-        message: errorMessage, // <-- Hiển thị thông báo thân thiện
+        message: msg,
         type: ToastType.error,
-        );
-        
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // --- 5. HÀM HELPER MỚI (ĐỂ KIỂM TRA CACHE) ---
+  Future<String> _loginFromCache(String soThe) async {
+    final db = await DatabaseHelper().database;
+    final List<Map<String, dynamic>> localUser = await db.query(
+      'VmlPersion',
+      columns: ['nguoiThaoTac'],
+      where: 'mUserID = ?',
+      whereArgs: [soThe],
+    );
+
+    if (localUser.isEmpty) {
+      throw WeighingException('Số thẻ không tồn tại trong dữ liệu Offline.');
+    }
+    
+    return localUser.first['nguoiThaoTac'] as String;
+  }
+
+  // --- 6. HÀM HELPER MỚI (ĐỂ CHẠY SYNC NGẦM) ---
+  Future<void> _runSync() async {
+    // (Hàm này chạy ngầm, không báo toast)
+    try {
+      if (kDebugMode) print('🔄 Đang chạy đồng bộ dữ liệu ngầm...');
+      await SyncService().syncAllData();
+      if (kDebugMode) print('✅ Đồng bộ ngầm hoàn tất.');
+    } catch (e) {
+      if (kDebugMode) print('❌ Lỗi đồng bộ ngầm: $e');
+    }
+  }
+
   // ===== HÀM KIỂM TRA SERVER LAN =====
-  Future<bool> _canReachLocalServer(String serverUrl) async {
+  /*Future<bool> _canReachLocalServer(String serverUrl) async {
     try {
       final response = await http
           .get(Uri.parse(serverUrl))
@@ -147,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       return false;
     }
-  }
+  }*/
 
   // ===== GIAO DIỆN =====
   @override
