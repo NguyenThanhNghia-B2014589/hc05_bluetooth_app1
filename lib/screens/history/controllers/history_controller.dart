@@ -121,12 +121,10 @@ class HistoryController with ChangeNotifier {
     // Bắt đầu bằng danh sách gốc (đã có Summary)
     List<dynamic> filteredList = _allRecords; 
 
-    // Lọc theo Ngày
+    // --- BỘ LỌC 1: LỌC THEO NGÀY ---
     if (_selectedDate != null) {
       filteredList = filteredList.where((item) {
-        // Giữ lại Hàng Tóm Tắt (SummaryData)
-        if (item is SummaryData) return true; 
-        // Chỉ lọc WeighingRecord
+        if (item is SummaryData) return true; // Giữ Summary
         if (item is WeighingRecord) {
           return _isSameDay(item.mixTime, _selectedDate);
         }
@@ -134,51 +132,75 @@ class HistoryController with ChangeNotifier {
       }).toList();
     }
 
-    // Lọc theo Từ khóa
-    if (_searchText.isNotEmpty) {
+    // --- BỘ LỌC 2: LỌC THEO LOẠI (NẾU ĐƯỢC CHỌN) ---
+    // (Bỏ 'else', áp dụng lọc này TRƯỚC khi lọc text)
+    if (_selectedFilterType == 'Cân Nhập') {
+      filteredList = filteredList.where((item) {
+        if (item is SummaryData) return true;
+        if (item is WeighingRecord) return item.loai == 'nhap';
+        return false;
+      }).toList();
+    } else if (_selectedFilterType == 'Cân Xuất') {
+      filteredList = filteredList.where((item) {
+        if (item is SummaryData) return true;
+        if (item is WeighingRecord) return item.loai == 'xuat';
+        return false;
+      }).toList();
+    }
+    
+    // --- BỘ LỌC 3: LỌC THEO TỪ KHÓA (LUÔN LUÔN CHẠY) ---
+    // (Áp dụng cho danh sách ĐÃ LỌC ở trên)
+    if (_searchText.isNotEmpty) { 
       String query = _searchText.toLowerCase();
       filteredList = filteredList.where((item) {
-        // Giữ lại Hàng Tóm Tắt
+        
+        // 1. Nếu là Hàng Tóm Tắt (SummaryData)
         if (item is SummaryData) {
-          // (Tùy chọn: Lọc luôn cả hàng tóm tắt)
-          if (_selectedFilterType == 'OVNO') {
-            return item.ovNO.toLowerCase().contains(query);
+          // Chỉ tìm theo OVNO (nếu filter type là OVNO hoặc TẤT CẢ)
+          if (_selectedFilterType == 'OVNO' || _selectedFilterType == 'Tên phôi keo' || _selectedFilterType == 'Mã code') {
+             return item.ovNO.toLowerCase().contains(query);
           }
-          return true; // Giữ lại hàng tóm tắt nếu không lọc theo OVNO
+          // Nếu filter type là 'Cân Nhập'/'Xuất', nó sẽ tìm theo các trường record
+          // và hàng summary sẽ được giữ lại nếu record con khớp
+          return true; 
         }
         
-        // Chỉ lọc WeighingRecord
+        // 2. Nếu là Hàng Dữ Liệu (WeighingRecord)
         if (item is WeighingRecord) {
+          // Chỉ tìm theo trường đã chọn trong dropdown
           if (_selectedFilterType == 'Tên phôi keo') {
             return item.tenPhoiKeo?.toLowerCase().contains(query) ?? false;
           } else if (_selectedFilterType == 'Mã code') {
             return item.maCode.toLowerCase().contains(query);
           } else if (_selectedFilterType == 'OVNO') {
             return item.ovNO.toLowerCase().contains(query);
+          } else if (_selectedFilterType == 'Cân Nhập' || _selectedFilterType == 'Cân Xuất') {
+            // Nếu đang lọc theo loại, cho phép tìm kiếm trong TẤT CẢ các trường
+            return (item.tenPhoiKeo?.toLowerCase().contains(query) ?? false) ||
+                   (item.maCode.toLowerCase().contains(query)) ||
+                   (item.ovNO.toLowerCase().contains(query));
           }
         }
         return false;
       }).toList();
     }
     
-    // Xóa các hàng Tóm tắt "mồ côi" (không còn record con nào sau khi lọc)
+    // --- XÓA HÀNG TÓM TẮT "MỒ CÔI" ---
     List<dynamic> cleanList = [];
     for (int i = 0; i < filteredList.length; i++) {
       final item = filteredList[i];
       if (item is SummaryData) {
-        // Nếu item trước đó là Header (hoặc là đầu list), thì xóa
         if (i == 0 || filteredList[i - 1] is SummaryData) {
-          continue; // Bỏ qua hàng tóm tắt mồ côi
+          continue; 
         }
       }
       cleanList.add(item);
     }
 
-    _filteredRecords = cleanList; // Gán List<dynamic>
-    notifyListeners(); // Thông báo cho UI cập nhật
+    _filteredRecords = cleanList; 
+    notifyListeners(); 
   }
 
-  // --- (Các hàm update... giữ nguyên) ---
   void updateFilterType(String? newType) {
     if (newType != null && _selectedFilterType != newType) {
       _selectedFilterType = newType;

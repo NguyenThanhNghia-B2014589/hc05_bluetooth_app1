@@ -81,75 +81,77 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // --- HÀM _buildFilterBar ĐỂ DÙNG CONTROLLER ---
   Widget _buildFilterBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+      // Dropdown Loại Filter
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+        child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _controller.selectedFilterType,
+          items: const [
+                    // --- 2. THÊM 2 LỰA CHỌN MỚI ---
+          DropdownMenuItem(value: 'Cân Nhập', child: Text('Cân Nhập')),
+          DropdownMenuItem(value: 'Cân Xuất', child: Text('Cân Xuất')),
+                    // --- LỰA CHỌN CŨ ---
+          DropdownMenuItem(value: 'Tên phôi keo', child: Text('Tên phôi keo')),
+          DropdownMenuItem(value: 'Mã code', child: Text('Mã code')),
+          DropdownMenuItem(value: 'OVNO', child: Text('OVNO')),
+          ],
+          onChanged: (value) {
+          _controller.updateFilterType(value);
+          },
+        ),
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Dropdown Loại Filter
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-                color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _controller.selectedFilterType, // <-- Dùng controller
-                items: const [
-                  DropdownMenuItem(value: 'Tên phôi keo', child: Text('Tên phôi keo')),
-                  DropdownMenuItem(value: 'Mã code', child: Text('Mã code')),
-                  DropdownMenuItem(value: 'OVNO', child: Text('OVNO')),
-                ],
-                onChanged: (value) {
-                  _controller.updateFilterType(value); // <-- Gọi controller
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          // Date Picker
-          DatePickerInput(
-            selectedDate: _controller.selectedDate, // <-- Dùng controller
-            controller: _controller.dateController, // <-- Dùng controller
-            onDateSelected: (newDate) {
-              _controller.updateSelectedDate(newDate); // <-- Gọi controller
-            },
-            onDateCleared: () {
-              _controller.clearSelectedDate(); // <-- Gọi controller
-            },
-          ),
-          
-          const VerticalDivider(),
-          
-          // Search Field
-          SizedBox(
-            width: 250,
-            child: TextField(
-              controller: _controller.searchController, // Listener đã được thêm trong initState
-              decoration: InputDecoration(
-                hintText: 'Tìm kiếm...',
-                prefixIcon: Icon(Icons.search),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Colors.black, width: 1.0),
-                ),
-                
-                // 3. Viền khi bấm vào (màu đen, dày hơn)
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
-                ),
-
-                // 4. Căn chỉnh lại padding bên trong ô
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
-              ),
-            ),
-          ),
-        ],
+      const SizedBox(width: 16),
+      
+      // Date Picker (Giữ nguyên)
+      DatePickerInput(
+        selectedDate: _controller.selectedDate,
+        controller: _controller.dateController,
+        onDateSelected: (newDate) {
+        _controller.updateSelectedDate(newDate);
+        },
+        onDateCleared: () {
+        _controller.clearSelectedDate();
+        },
       ),
+      
+      const VerticalDivider(),
+      
+      // Search Field (Sửa lại)
+      SizedBox(
+        width: 250,
+        child: TextField(
+        controller: _controller.searchController,
+        decoration: InputDecoration(
+          hintText: 'Tìm kiếm...',
+          prefixIcon: const Icon(Icons.search),
+          // (Code viền đen của bạn)
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Colors.black, width: 1.0),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Colors.black, width: 2.0),
+          ),         
+          filled: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+        ),
+        ),
+      ),
+      ],
+    ),
     );
   }
 }
