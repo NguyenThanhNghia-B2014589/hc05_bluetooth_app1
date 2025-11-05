@@ -128,14 +128,25 @@ class WeighingStationController with ChangeNotifier {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        data = json.decode(response.body);
+    data = json.decode(response.body);
 
-        if (loaiCan == WeighingType.nhap && data['isNhapWeighed'] == true) {
-          throw WeighingException('Mã này đã được CÂN NHẬP (trên server).');
-        }
-        if (loaiCan == WeighingType.xuat && data['isXuatWeighed'] == true) {
-          throw WeighingException('Mã này đã được CÂN XUẤT (trên server).');
-        }
+    final bool isNhapWeighed = data['isNhapWeighed'] == true;
+    final bool isXuatWeighed = data['isXuatWeighed'] == true;
+
+    if (loaiCan == WeighingType.nhap && isNhapWeighed) {
+     throw WeighingException('Mã này đã được CÂN NHẬP (trên server).');
+    }
+    if (loaiCan == WeighingType.xuat) {
+     if (isXuatWeighed) {
+      throw WeighingException('Mã này đã được CÂN XUẤT (trên server).');
+     }
+          // --- THÊM KIỂM TRA MỚI ---
+     if (!isNhapWeighed) {
+      // Nếu KHÔNG (NOT) có cân nhập
+      throw WeighingException('Lỗi: Mã này CHƯA CÂN NHẬP (trên server).');
+     }
+          // --- KẾT THÚC THÊM ---
+    }
 
         // Lưu cache
         await db.insert(
@@ -164,27 +175,32 @@ class WeighingStationController with ChangeNotifier {
         throw WeighingException('Lỗi server: ${response.statusCode}, thử lại offline...');
       }
     } else {
-      // --- OFFLINE ---
-      if (kDebugMode) print('🔌 Offline Mode: Đang tìm trong cache cục bộ...');
-      data = await _scanFromCache(db, code);
+        // --- OFFLINE ---
+        if (kDebugMode) print('🔌 Offline Mode: Đang tìm trong cache cục bộ...');
+          data = await _scanFromCache(db, code);
 
-      final loaiOffline = data['loai'];
+          final loaiOffline = data['loai'];
 
-      if (loaiCan == WeighingType.nhap) {
-        // ✅ Nếu cân nhập mà mã đã nhập => báo lỗi
-        if (loaiOffline == 'nhap') {
-          throw WeighingException('Mã này đã được CÂN NHẬP (lưu trong cache).');
-        }
+          if (loaiCan == WeighingType.nhap) {
+            if (loaiOffline == 'nhap') {
+              throw WeighingException('Mã này đã được CÂN NHẬP (lưu trong cache).');
+            }
+          // (Nếu là 'xuat' hoặc 'chua', vẫn cho phép cân nhập)
+          }
+
+          if (loaiCan == WeighingType.xuat) {
+            if (loaiOffline == 'xuat') {
+              throw WeighingException('Mã này đã được CÂN XUẤT (lưu trong cache).');
+            }
+            // --- THÊM KIỂM TRA MỚI ---
+            // Nếu loại là 'chua' (hoặc null), nghĩa là chưa cân nhập
+            if (loaiOffline == null || loaiOffline == 'chua') {
+              throw WeighingException('Lỗi: Mã này CHƯA CÂN NHẬP (offline).');
+            }
+          // --- KẾT THÚC THÊM ---
+          // (Nếu là 'nhap', cho phép cân xuất)
+          }
       }
-
-      if (loaiCan == WeighingType.xuat) {
-        // ✅ Nếu cân xuất mà mã đã xuất => báo lỗi
-        if (loaiOffline == 'xuat') {
-          throw WeighingException('Mã này đã được CÂN XUẤT (lưu trong cache).');
-        }
-        // ✅ Còn nếu loai = 'nhap' hoặc null => cho phép cân xuất
-      }
-    }
 
     // --- CẬP NHẬT UI ---
     if (!context.mounted) return;
@@ -283,6 +299,27 @@ class WeighingStationController with ChangeNotifier {
         );
         if (existingInCache.isNotEmpty) {
           throw WeighingException('Mã này đã được cân (đã đồng bộ).');
+        }
+      } else if (loaiCan == 'xuat') {
+        // Kiểm tra xem mã này đã CÂN NHẬP chưa
+        
+        // 1. Kiểm tra Cache
+        final existingInCache = await db.query(
+          'VmlWorkS',
+          where: 'maCode = ? AND loai = ?', // Phải có 'loai' là 'nhap'
+          whereArgs: [currentRecord.maCode, 'nhap'],
+        );
+        
+        // 2. Kiểm tra Queue
+        final existingInQueue = await db.query(
+          'HistoryQueue',
+          where: 'maCode = ? AND loai = ?',
+          whereArgs: [currentRecord.maCode, 'nhap'],
+        );
+
+        if (existingInCache.isEmpty && existingInQueue.isEmpty) {
+          // Nếu không tìm thấy ở cả 2 nơi
+          throw WeighingException('Lỗi: Mã này CHƯA CÂN NHẬP (offline).');
         }
       }
 
