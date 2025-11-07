@@ -9,7 +9,8 @@ import 'screens/history/history_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'package:hc05_bluetooth_app/screens/pending_sync/pending_sync_screen.dart';
-
+import 'services/settings_service.dart';
+import 'screens/settings/settings_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -23,7 +24,7 @@ Future<void> main() async {
   if (kDebugMode) {
     print('🗑️ Database cũ đã bị xóa.');
   }
-
+  await SettingsService().init();
   runApp(const MyApp());
 }
 
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
         '/history': (context) => const HistoryScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/pending_sync': (context) => const PendingSyncScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }

@@ -34,7 +34,7 @@ class DashboardController with ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = Uri.parse('$_apiBaseUrl/api/history');
+      final url = Uri.parse('$_apiBaseUrl/api/history?days=all');
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {

@@ -7,9 +7,11 @@ import 'package:flutter/foundation.dart';
 
 import '../../../data/weighing_data.dart'; // Import WeighingRecord
 import '../widgets/history_table.dart'; // Import SummaryData
+import '../../../services/settings_service.dart'; 
 
 class HistoryController with ChangeNotifier {
   final String _apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3636';
+  final SettingsService _settings = SettingsService();
 
   final TextEditingController dateController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
@@ -30,6 +32,7 @@ class HistoryController with ChangeNotifier {
 
   HistoryController() {
     _loadData(); // Tải data gốc 1 lần
+    _settings.addListener(_loadData);
     searchController.addListener(() {
       if (_searchText != searchController.text) {
         _searchText = searchController.text;
@@ -42,6 +45,7 @@ class HistoryController with ChangeNotifier {
   void dispose() {
     dateController.dispose();
     searchController.dispose();
+    _settings.removeListener(_loadData);
     super.dispose();
   }
 
@@ -50,7 +54,8 @@ class HistoryController with ChangeNotifier {
   void _loadData() async {
     List<dynamic> newDisplayList = [];
     try {
-      final url = Uri.parse('$_apiBaseUrl/api/history');
+      final String days = _settings.historyRange;
+      final url = Uri.parse('$_apiBaseUrl/api/history?days=$days');
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {

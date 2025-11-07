@@ -41,11 +41,25 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                 '/login',
                 (Route<dynamic> route) => false,
               );
+            } else if (value == 'settings') {
+              Navigator.of(context).pushNamed('/settings');
             }
           },
           icon: const Icon(Icons.person, color: Colors.black, size: 30.0),
           tooltip: 'Tùy chọn',
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            //Cài đặt
+            PopupMenuItem<String>(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Icons.settings, color: Colors.blue.shade700),
+                  const SizedBox(width: 12),
+                  const Text('Cài đặt'),
+                ],
+              ),
+            ),
+            //Đăng xuất
             PopupMenuItem<String>(
               value: 'logout',
               child: Row(
