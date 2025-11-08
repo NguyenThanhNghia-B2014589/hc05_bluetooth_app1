@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../services/database_helper.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../data/weighing_data.dart';
@@ -276,7 +277,7 @@ class WeighingStationController with ChangeNotifier {
 
     final thoiGianCan = DateTime.now();
     final loaiCan = (_selectedWeighingType == WeighingType.nhap) ? 'nhap' : 'xuat';
-    final thoiGianString = thoiGianCan.toIso8601String();
+    final thoiGianString = DateFormat('yyyy-MM-dd HH:mm:ss').format(thoiGianCan);
     final db = await _dbHelper.database;
 
     // 3. Kiểm tra trạng thái mạng

@@ -96,7 +96,7 @@ class _PendingSyncScreenState extends State<PendingSyncScreen> {
   // 3. Định dạng thời gian
   String _formatTime(String isoString) {
     try {
-      final dt = DateTime.parse(isoString).toLocal();
+      final dt = DateTime.parse(isoString);
       return DateFormat('dd/MM HH:mm:ss').format(dt);
     } catch (_) {
       return isoString;
