@@ -43,6 +43,11 @@ class SyncService {
         // Dùng 'insert OR REPLACE' để cập nhật
         
         // Thêm vào VmlWorkS
+        // Determine loai: prefer server-provided, otherwise infer from realQty
+        final String inferredLoai = (item['loai'] != null && item['loai'].toString().isNotEmpty)
+            ? item['loai'].toString()
+            : (item['realQty'] != null ? 'nhap' : 'chua');
+
         batch.insert('VmlWorkS', {
           'maCode': item['maCode'],
           'ovNO': item['ovNO'],
@@ -51,6 +56,7 @@ class SyncService {
           'qtys': item['qtys'],
           'realQty': item['realQty'],
           'mixTime': item['mixTime'],
+          'loai': inferredLoai,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
         
         // Thêm vào VmlWork
@@ -139,13 +145,30 @@ class SyncService {
           if (kDebugMode) {
             print('✅ Đã đồng bộ thành công ID Queue: $localId');
           }
-        
+
         } else if (response.statusCode >= 400 && response.statusCode < 500) {
+          // Client error: lưu lỗi vào bảng FailedSyncs để hiển thị cho người dùng
+          String errMsg = 'Lỗi ${response.statusCode}';
+          try {
+            final Map<String, dynamic> body = json.decode(response.body);
+            if (body['message'] != null) errMsg = body['message'];
+          } catch (_) {}
+
           if (kDebugMode) {
-            print('❌ Lỗi 4xx khi đồng bộ ID Queue: $localId. Xóa khỏi queue.');
+            print('❌ Lỗi 4xx khi đồng bộ ID Queue: $localId. Chuyển vào FailedSyncs: $errMsg');
           }
+
+          await db.insert('FailedSyncs', {
+            'maCode': record['maCode'],
+            'khoiLuongCan': record['khoiLuongCan'],
+            'thoiGianCan': record['thoiGianCan'],
+            'loai': record['loai'],
+            'errorMessage': errMsg,
+            'failedAt': DateTime.now().toIso8601String(),
+          });
+
           await db.delete('HistoryQueue', where: 'id = ?', whereArgs: [localId]);
-        
+
         } else {
           if (kDebugMode) {
             print('⚠️ Lỗi 5xx khi đồng bộ ID Queue: $localId. Sẽ thử lại sau.');
@@ -161,6 +184,74 @@ class SyncService {
     }
     if (kDebugMode) {
       print('🔄 Đồng bộ HistoryQueue hoàn tất.');
+    }
+  }
+
+  /// Thử đồng bộ lại một bản ghi thất bại (FailedSyncs)
+  /// Trả về true nếu thành công và xóa bản ghi FailedSyncs, false nếu thất bại hoặc mạng lỗi.
+  Future<bool> retryFailedSync(int failedId, Map<String, dynamic> failedRecord) async {
+    final db = await _dbHelper.database;
+
+    // Kiểm tra mạng
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (!connectivityResult.contains(ConnectivityResult.wifi) && 
+        !connectivityResult.contains(ConnectivityResult.mobile)) {
+      if (kDebugMode) print('🌐 Không có mạng, không thể retry.');
+      return false;
+    }
+
+    try {
+      final url = Uri.parse('$_apiBaseUrl/api/complete');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'maCode': failedRecord['maCode'],
+          'khoiLuongCan': failedRecord['khoiLuongCan'],
+          'thoiGianCan': failedRecord['thoiGianCan'],
+          'loai': failedRecord['loai'],
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 201) {
+        // Thành công: xóa khỏi FailedSyncs
+        await db.delete('FailedSyncs', where: 'id = ?', whereArgs: [failedId]);
+
+        // Đồng thời cập nhật VmlWorkS để hiển thị trong danh sách "đã đồng bộ"
+        await db.update(
+          'VmlWorkS',
+          {
+            'realQty': failedRecord['khoiLuongCan'],
+            'mixTime': failedRecord['thoiGianCan'],
+            'loai': failedRecord['loai'],
+          },
+          where: 'maCode = ?',
+          whereArgs: [failedRecord['maCode']],
+        );
+
+        if (kDebugMode) print('✅ Retry thành công cho FailedSync id=$failedId');
+        return true;
+
+      } else if (response.statusCode >= 400 && response.statusCode < 500) {
+        // Cập nhật lỗi mới vào FailedSyncs
+        String errMsg = 'Lỗi ${response.statusCode}';
+        try {
+          final Map<String, dynamic> body = json.decode(response.body);
+          if (body['message'] != null) errMsg = body['message'];
+        } catch (_) {}
+
+        if (kDebugMode) print('❌ Retry lỗi 4xx cho id=$failedId: $errMsg');
+        await _dbHelper.updateFailedSyncError(failedId, errMsg);
+        return false;
+
+      } else {
+        if (kDebugMode) print('⚠️ Retry gặp lỗi server cho id=$failedId (status ${response.statusCode})');
+        return false;
+      }
+
+    } catch (e) {
+      if (kDebugMode) print('🌐 Lỗi mạng khi retry id=$failedId: $e');
+      return false;
     }
   }
 }

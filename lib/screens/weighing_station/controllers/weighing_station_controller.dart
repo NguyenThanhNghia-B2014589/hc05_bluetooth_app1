@@ -80,18 +80,43 @@ class WeighingStationController with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateWeighingType(WeighingType? newType) {
-    if (newType != null) {
-      _selectedWeighingType = newType;
+  /// Cập nhật loại cân được chọn. Nếu đang ở chế độ offline và
+  /// mã hiện tại đã được cân nhập trước đó, không cho phép chọn `nhap`.
+  Future<void> updateWeighingType(WeighingType? newType, BuildContext context) async {
+    if (newType == null) return;
+
+    // Nếu user muốn chuyển sang 'nhap' nhưng mã hiện tại đã có bản ghi 'nhap' (offline), chặn lại.
+    if (newType == WeighingType.nhap && _records.isNotEmpty) {
+      final currentRecord = _records[0];
+      final db = await _dbHelper.database;
+
+      // Kiểm tra: đã có 'nhap' trong HistoryQueue (chờ sync) hoặc trong VmlWorkS với realQty != NULL
+      final existingInQueue = await db.query('HistoryQueue', where: 'maCode = ? AND loai = ?', whereArgs: [currentRecord.maCode, 'nhap']);
+      final existingInCache = await db.query('VmlWorkS', where: 'maCode = ? AND loai = ? AND realQty IS NOT NULL', whereArgs: [currentRecord.maCode, 'nhap']);
+
+      if (existingInQueue.isNotEmpty || existingInCache.isNotEmpty) {
+        if (context.mounted) {
+          NotificationService().showToast(
+            context: context,
+            message: 'Mã này đã được CÂN NHẬP (offline). Không thể chuyển về Cân Nhập.',
+            type: ToastType.error,
+          );
+        }
+        return;
+      }
     }
+
+    _selectedWeighingType = newType;
+    notifyListeners();
   }
 
   // --- LẤY DỮ LIỆU OFFLINE ---
   Future<Map<String, dynamic>> _scanFromCache(Database db, String code) async {
   final List<Map<String, dynamic>> localData = await db.rawQuery(
     '''
-    SELECT S.maCode, S.ovNO, S.package, S.mUserID, S.qtys,
-           S.loai,
+        SELECT S.maCode, S.ovNO, S.package, S.mUserID, S.qtys,
+          S.realQty,
+          S.loai,
            W.tenPhoiKeo, W.soMay, W.memo, W.totalTargetQty,
            P.nguoiThaoTac, S.package as soLo
     FROM VmlWorkS AS S
@@ -130,8 +155,11 @@ class WeighingStationController with ChangeNotifier {
 
       if (response.statusCode == 200) {
         data = json.decode(response.body);
-        isNhapWeighedFromServer = data['isNhapWeighed'] == true;
-        final bool isXuatWeighed = data['isXuatWeighed'] == true;
+        // Server may return either explicit booleans or a 'loai' string.
+        final bool flagNhap = data['isNhapWeighed'] == true;
+        final String loaiFromServer = (data['loai'] ?? '').toString().toLowerCase().trim();
+        isNhapWeighedFromServer = flagNhap || (loaiFromServer == 'nhap');
+        final bool isXuatWeighed = data['isXuatWeighed'] == true || (loaiFromServer == 'xuat');
 
         // Kiểm tra xem mã đã cân xuất chưa (không cho phép cân lại nếu cân xuất rồi)
         if (isXuatWeighed) {
@@ -168,10 +196,31 @@ class WeighingStationController with ChangeNotifier {
       // --- BƯỚC 1 (OFFLINE): KIỂM TRA DỮ LIỆU LOCAL TRƯỚC ---
       if (kDebugMode) print('🔌 Offline Mode: Đang tìm trong cache cục bộ...');
       data = await _scanFromCache(db, code);
-      
-      // Nếu trong cache có loai = 'nhap', nghĩa là đã cân nhập
-      // Nếu loai = null hoặc 'chua', nghĩa là chưa cân nhập
-      isNhapWeighedFromServer = (data['loai'] == 'nhap');
+
+      // --- BẮT ĐẦU SỬA LỖI ---
+      // 1. Kiểm tra trạng thái từ VmlWorkS (cache đã đồng bộ)
+      final String loaiFromCache = (data['loai'] ?? '').toString().toLowerCase().trim();
+      final dynamic realQtyFromCache = data['realQty'];
+      // Nếu `realQty` đã có (không null) coi là đã cân (nhập) — an toàn hơn khi `loai` có thể bị thiếu
+      bool hasWeighedNhapInCache = (realQtyFromCache != null) || (loaiFromCache == 'nhap');
+
+      // 2. Kiểm tra thêm HistoryQueue (dữ liệu chờ đồng bộ)
+      final existingNhapInQueue = await db.query(
+        'HistoryQueue',
+        where: 'maCode = ? AND loai = ?',
+        whereArgs: [code, 'nhap'],
+      );
+      bool hasWeighedNhapInQueue = existingNhapInQueue.isNotEmpty;
+
+      // 3. Trạng thái "Đã cân nhập" = (đã cân trong cache) HOẶC (đã cân trong hàng đợi)
+      isNhapWeighedFromServer = hasWeighedNhapInCache || hasWeighedNhapInQueue;
+      // --- KẾT THÚC SỬA LỖI ---
+
+      // Ghi lại dạng normalized để debug
+      if (kDebugMode) {
+        print('🔍 loaiFromCache="$loaiFromCache" (hasWeighedNhapInCache=$hasWeighedNhapInCache)');
+        print('🔍 existingNhapInQueue (Chờ sync): ${existingNhapInQueue.length} (hasWeighedNhapInQueue=$hasWeighedNhapInQueue)');
+      }
     }
 
     // --- BƯỚC 2: TỰ ĐỘNG XÁC ĐỊNH LOẠI CÂN DỰA TRÊN TRẠNG THÁI ---
@@ -334,7 +383,7 @@ class WeighingStationController with ChangeNotifier {
           if (existingInQueue.isNotEmpty) {
             throw WeighingException('Mã này đã được cân (đang chờ đồng bộ).');
           }
-          final existingInCache = await db.query('VmlWorkS', where: 'maCode = ? AND loai = ? AND realQty IS NOT NULL', whereArgs: [currentRecord.maCode, 'nhap']);
+          final existingInCache = await db.query('VmlWorkS', where: 'maCode = ? AND realQty IS NOT NULL', whereArgs: [currentRecord.maCode]);
           if (existingInCache.isNotEmpty) {
             throw WeighingException('Mã này đã được cân nhập (đã đồng bộ).');
           }
@@ -346,7 +395,7 @@ class WeighingStationController with ChangeNotifier {
           //    - Trong HistoryQueue có bản ghi 'nhap' (chờ đồng bộ) HOẶC
           //    - Trong VmlWorkS có loai = 'nhap' và realQty IS NOT NULL (đã cân nhập và lưu)
           final existingNhapInQueue = await db.query('HistoryQueue', where: 'maCode = ? AND loai = ?', whereArgs: [currentRecord.maCode, 'nhap']);
-          final existingNhapInCache = await db.query('VmlWorkS', where: 'maCode = ? AND loai = ? AND realQty IS NOT NULL', whereArgs: [currentRecord.maCode, 'nhap']);
+          final existingNhapInCache = await db.query('VmlWorkS', where: 'maCode = ? AND realQty IS NOT NULL', whereArgs: [currentRecord.maCode]);
           if (existingNhapInQueue.isEmpty && existingNhapInCache.isEmpty) {
             throw WeighingException('Lỗi: Mã này CHƯA CÂN NHẬP (offline).');
           }

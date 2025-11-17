@@ -63,6 +63,18 @@ class DatabaseHelper {
         loai TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE FailedSyncs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        maCode TEXT NOT NULL,
+        khoiLuongCan REAL,
+        thoiGianCan TEXT,
+        loai TEXT,
+        errorMessage TEXT,
+        failedAt TEXT
+      )
+    ''');
   }
 
   // Tự động thêm cột mới nếu DB cũ không có
@@ -71,6 +83,20 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE VmlWorkS ADD COLUMN realQty REAL');
       await db.execute('ALTER TABLE VmlWorkS ADD COLUMN mixTime TEXT');
       await db.execute('ALTER TABLE VmlWorkS ADD COLUMN loai TEXT');
+    }
+    // Version 3: add FailedSyncs table if upgrading from <3
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS FailedSyncs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          maCode TEXT NOT NULL,
+          khoiLuongCan REAL,
+          thoiGianCan TEXT,
+          loai TEXT,
+          errorMessage TEXT,
+          failedAt TEXT
+        )
+      ''');
     }
   }
 
@@ -110,6 +136,52 @@ class DatabaseHelper {
       ORDER BY 
         H.id ASC
     ''');
+  }
+
+  /// Lấy các bản ghi đồng bộ thất bại
+  Future<List<Map<String, dynamic>>> getFailedSyncRecords() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        F.id, F.maCode, F.khoiLuongCan, F.thoiGianCan, F.loai, F.errorMessage, F.failedAt,
+        S.package as soLo, W.tenPhoiKeo, P.nguoiThaoTac
+      FROM FailedSyncs AS F
+      LEFT JOIN VmlWorkS AS S ON F.maCode = S.maCode
+      LEFT JOIN VmlWork AS W ON S.ovNO = W.ovNO
+      LEFT JOIN VmlPersion AS P ON S.mUserID = P.mUserID
+      ORDER BY F.failedAt DESC
+    ''');
+  }
+
+  /// Lấy 10 mã đã đồng bộ thành công nhất (theo thời gian mixTime)
+  Future<List<Map<String, dynamic>>> getLast10SuccessfulRecords() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        S.maCode, S.realQty AS khoiLuongCan, S.mixTime AS thoiGianCan, S.loai,
+        S.package as soLo, W.tenPhoiKeo, P.nguoiThaoTac
+      FROM VmlWorkS AS S
+      LEFT JOIN VmlWork AS W ON S.ovNO = W.ovNO
+      LEFT JOIN VmlPersion AS P ON S.mUserID = P.mUserID
+      WHERE S.realQty IS NOT NULL
+      ORDER BY S.mixTime DESC
+      LIMIT 10
+    ''');
+  }
+
+  /// Xóa bản ghi FailedSync theo id
+  Future<void> deleteFailedSyncById(int id) async {
+    final db = await database;
+    await db.delete('FailedSyncs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Cập nhật message/failedAt cho bản ghi FailedSync (khi retry thất bại)
+  Future<void> updateFailedSyncError(int id, String errorMessage) async {
+    final db = await database;
+    await db.update('FailedSyncs', {
+      'errorMessage': errorMessage,
+      'failedAt': DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
   }
 
   /// Kiểm tra xem mã đã cân nhập chưa (offline)

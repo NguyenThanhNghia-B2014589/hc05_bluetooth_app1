@@ -125,9 +125,9 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
               ),
             ),
           ],
-          onChanged: (WeighingType? newValue) {
+          onChanged: (WeighingType? newValue) async {
             if (newValue != null) {
-              _controller.updateWeighingType(newValue);
+              await _controller.updateWeighingType(newValue, context);
               setState(() {}); // Force rebuild để đổi màu
             }
           },
