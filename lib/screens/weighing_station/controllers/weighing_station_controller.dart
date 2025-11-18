@@ -11,6 +11,9 @@ import '../../../services/bluetooth_service.dart';
 import '../../../services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../services/server_status_service.dart';
+import '../../../services/weight_stability_monitor.dart';
+import '../../../services/audio_service.dart';
+import '../../../services/settings_service.dart';
 
 enum WeighingType { nhap, xuat }
 
@@ -59,6 +62,11 @@ class WeighingStationController with ChangeNotifier {
 
   WeighingType _selectedWeighingType = WeighingType.nhap;
   WeighingType get selectedWeighingType => _selectedWeighingType;
+
+  // === TỰ ĐỘNG HOÀN TẤT ===
+  WeightStabilityMonitor? _stabilityMonitor;
+  Timer? _autoCompleteTimer;
+  bool _isAutoCompletePending = false;
 
   WeighingStationController({required this.bluetoothService});
 
@@ -270,6 +278,11 @@ class WeighingStationController with ChangeNotifier {
     _records.insert(0, newRecord);
     if (_records.length > 2) _records.removeLast();
 
+    // Reset monitor cho mã mới
+    _stabilityMonitor?.reset();
+    _isAutoCompletePending = false;
+    _autoCompleteTimer?.cancel();
+
     final typeText = autoDetectedType == WeighingType.nhap ? "CÂN NHẬP" : "CÂN XUẤT";
     NotificationService().showToast(
       context: context,
@@ -466,5 +479,107 @@ class WeighingStationController with ChangeNotifier {
       );
       return false;
     }
+  }
+
+  // === PHƯƠNG THỨC TỰ ĐỘNG HOÀN TẤT ===
+  /// Khởi tạo theo dõi ổn định cân
+  void initWeightMonitoring(BuildContext context) {
+    final settings = SettingsService();
+    
+    if (kDebugMode) {
+      print('🔍 initWeightMonitoring - autoCompleteEnabled: ${settings.autoCompleteEnabled}');
+    }
+    
+    if (!settings.autoCompleteEnabled) {
+      if (kDebugMode) print('⚠️ Tự động hoàn tất bị TẮT');
+      return;
+    }
+
+    _stabilityMonitor = WeightStabilityMonitor(
+      stabilizationDelay: settings.stabilizationDelay,
+      onStable: () {
+        _onWeightStable(context);
+      },
+    );
+    
+    if (kDebugMode) {
+      print('📊 Khởi tạo theo dõi ổn định (Delay: ${settings.stabilizationDelay}s)');
+    }
+  }
+
+  /// Thêm giá trị cân vào monitor
+  void addWeightSample(double weight) {
+    if (_stabilityMonitor == null) {
+      if (kDebugMode) print('⚠️ Monitor là NULL, bỏ qua: $weight');
+      return;
+    }
+    _stabilityMonitor!.addWeight(weight);
+  }
+
+  /// Gọi khi cân ổn định
+  void _onWeightStable(BuildContext context) {
+    if (!context.mounted) return;
+    if (_isAutoCompletePending) return; // Chừa auto-complete đang chạy
+
+    final settings = SettingsService();
+    final currentWeight = bluetoothService.currentWeight.value;
+    
+    // Kiểm tra trọng lượng có nằm trong phạm vi không
+    final isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
+    if (!isInRange) {
+      if (kDebugMode) {
+        print('⚠️ Cân ổn định nhưng NGOÀI phạm vi ($currentWeight kg). Bỏ qua.');
+      }
+      return;
+    }
+    
+    if (kDebugMode) {
+      print('✅ Cân ổn định trong phạm vi! Sẽ hoàn tất sau ${settings.autoCompleteDelay}s...');
+    }
+
+    _isAutoCompletePending = true;
+
+    // Đặt timer để hoàn tất sau khoảng thời gian cài đặt
+    _autoCompleteTimer = Timer(
+      Duration(seconds: settings.autoCompleteDelay),
+      () async {
+        if (!context.mounted) return;
+        
+        if (_records.isEmpty) {
+          _isAutoCompletePending = false;
+          return;
+        }
+
+        // Lấy trọng lượng HIỆN TẠI từ cân Bluetooth
+        final currentWeight = bluetoothService.currentWeight.value;
+        
+        // Thực hiện hoàn tất
+        final success = await completeCurrentWeighing(context, currentWeight);
+        
+        if (success) {
+          // Phát tiếng bíp nếu bật
+          if (settings.beepOnSuccess) {
+            AudioService().playSuccessBeep();
+          }
+        }
+        
+        _isAutoCompletePending = false;
+      },
+    );
+  }
+
+  /// Hủy monitoring khi rời màn hình
+  void cancelAutoComplete() {
+    _autoCompleteTimer?.cancel();
+    _autoCompleteTimer = null;
+    _stabilityMonitor?.dispose();
+    _stabilityMonitor = null;
+    _isAutoCompletePending = false;
+  }
+
+  @override
+  void dispose() {
+    cancelAutoComplete();
+    super.dispose();
   }
 }

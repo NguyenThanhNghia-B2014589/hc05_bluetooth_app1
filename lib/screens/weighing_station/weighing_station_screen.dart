@@ -45,6 +45,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     super.initState();
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
+    _controller.initWeightMonitoring(context);
     _bluetoothService.connectedDevice.addListener(_onConnectionChange);
     _syncService.syncHistoryQueue();
   }
@@ -236,6 +237,9 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                           ValueListenableBuilder<double>(
                             valueListenable: _bluetoothService.currentWeight,
                             builder: (context, currentWeight, child) {
+                              // Thêm mẫu cân vào monitor để theo dõi ổn định
+                              _controller.addWeightSample(currentWeight);
+
                               final bool isInRange =
                                   (currentWeight >= _controller.minWeight) &&
                                       (currentWeight <= _controller.maxWeight) &&
