@@ -47,6 +47,11 @@ class WeightStabilityMonitor {
 
   /// Thêm giá trị trọng lượng mới
   void addWeight(double weight) {
+    if (weight < 0.01) {
+       reset(); // Reset luôn nếu về 0
+       return;
+    }
+    
     // Nếu danh sách trống, thêm và thoát
     if (_recentWeights.isEmpty) {
       _recentWeights.add(weight);

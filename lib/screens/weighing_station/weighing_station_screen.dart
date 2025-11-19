@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hc05_bluetooth_app/services/sync_service.dart';
 import '../../services/bluetooth_service.dart';
@@ -19,6 +22,9 @@ class WeighingStationScreen extends StatefulWidget {
 }
 
 class _WeighingStationScreenState extends State<WeighingStationScreen> {
+  // Thêm Timer để giả lập cân
+  Timer? _simulationTimer;
+
   // --- SỬ DỤNG DỊCH VỤ BLUETOOTH CHUNG ---
   final BluetoothService _bluetoothService = BluetoothService();
   late final WeighingStationController _controller;
@@ -40,6 +46,27 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     }
   }
 
+  // HÀM GIẢ LẬP TÍN HIỆU CÂN
+  void _startSimulatingWeight(double weight) {
+    _simulationTimer?.cancel(); 
+    
+    // Cập nhật UI lần đầu
+    _bluetoothService.currentWeight.value = weight; 
+    
+    // Tạo Timer bắn tín hiệu mỗi 100ms
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      // 1. Cập nhật UI (ValueNotifier sẽ chặn nếu số trùng, nhưng kệ nó)
+      _bluetoothService.currentWeight.value = weight;
+      
+      // 2. QUAN TRỌNG: Ép buộc gửi mẫu vào controller để Monitor đếm
+      // Dòng này giúp Monitor nhận được: 80, 80, 80, 80... liên tục
+      _controller.addWeightSample(weight); 
+      
+      // Debug: Mở dòng này nếu muốn thấy nó chạy
+      // print('Simulating tick: $weight'); 
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +79,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
 
   @override
   void dispose() {
+    _simulationTimer?.cancel(); // Hủy Timer giả lập nếu còn chạy
     _controller.dispose();
     _scanTextController.dispose(); // Hủy controller khi màn hình bị hủy
     _bluetoothService.connectedDevice.removeListener(_onConnectionChange);
@@ -234,6 +262,53 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                                 _controller.handleScan(context, code),
                           ),
                           const SizedBox(height: 20),
+                          // === KHU VỰC TEST (Chỉ dùng khi dev) ===
+if (kDebugMode) ...[
+  Container(
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: Colors.yellow.shade100,
+      border: Border.all(color: Colors.orange),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🛠️ DEBUG: Giả lập cân', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nhập trọng lượng (kg)',
+            hintText: 'VD: 50.5',
+            border: OutlineInputBorder(),
+            isDense: true,
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          onChanged: (value) {
+            // 1. Parse số
+            final double? weight = double.tryParse(value);
+            
+            if (weight != null) {
+              // 2. Bắt đầu giả lập dòng chảy dữ liệu
+              _startSimulatingWeight(weight);
+            } else {
+              // Nếu xóa trắng hoặc nhập sai, dừng giả lập
+              _simulationTimer?.cancel();
+            }
+          },
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Lưu ý: Nhập số xong giữ nguyên, hệ thống sẽ tự bắn data liên tục để kích hoạt "Ổn định".',
+          style: TextStyle(fontSize: 11, color: Colors.grey),
+        ),
+      ],
+    ),
+  ),
+  const SizedBox(height: 20),
+],
                           ValueListenableBuilder<double>(
                             valueListenable: _bluetoothService.currentWeight,
                             builder: (context, currentWeight, child) {

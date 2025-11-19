@@ -519,50 +519,49 @@ class WeighingStationController with ChangeNotifier {
   /// Gọi khi cân ổn định
   void _onWeightStable(BuildContext context) {
     if (!context.mounted) return;
-    if (_isAutoCompletePending) return; // Chừa auto-complete đang chạy
+    if (_isAutoCompletePending) return;
 
     final settings = SettingsService();
-    final currentWeight = bluetoothService.currentWeight.value;
+    // Lấy trọng lượng TẠI THỜI ĐIỂM PHÁT HIỆN ỔN ĐỊNH
+    final stableWeight = bluetoothService.currentWeight.value;
     
-    // Kiểm tra trọng lượng có nằm trong phạm vi không
-    final isInRange = (currentWeight >= _minWeight) && (currentWeight <= _maxWeight);
-    if (!isInRange) {
-      if (kDebugMode) {
-        print('⚠️ Cân ổn định nhưng NGOÀI phạm vi ($currentWeight kg). Bỏ qua.');
-      }
-      return;
-    }
+    // Check range lần 1 (như cũ)
+    final isInRange = (stableWeight >= _minWeight) && (stableWeight <= _maxWeight);
+    if (!isInRange) return; // Bỏ qua nếu không trong range
     
     if (kDebugMode) {
-      print('✅ Cân ổn định trong phạm vi! Sẽ hoàn tất sau ${settings.autoCompleteDelay}s...');
+      print('✅ Cân ổn định ($stableWeight kg)! Đợi ${settings.autoCompleteDelay}s...');
     }
 
     _isAutoCompletePending = true;
+    // Hiển thị thông báo nhỏ (tùy chọn) để người dùng biết sắp lưu
+    // NotificationService().showToast(context: context, message: "Giữ nguyên...", type: ToastType.info);
 
-    // Đặt timer để hoàn tất sau khoảng thời gian cài đặt
     _autoCompleteTimer = Timer(
       Duration(seconds: settings.autoCompleteDelay),
       () async {
         if (!context.mounted) return;
         
-        if (_records.isEmpty) {
-          _isAutoCompletePending = false;
-          return;
-        }
-
-        // Lấy trọng lượng HIỆN TẠI từ cân Bluetooth
+        // Lấy trọng lượng TẠI THỜI ĐIỂM LƯU (sau khi chờ)
         final currentWeight = bluetoothService.currentWeight.value;
         
-        // Thực hiện hoàn tất
+        // --- SỬA ĐỔI QUAN TRỌNG TẠI ĐÂY ---
+        // Nếu trong lúc chờ, người dùng đã nhấc hàng ra (trọng lượng giảm mạnh hoặc về 0)
+        // Thì HỦY BỎ và KHÔNG BÁO LỖI
+        if (currentWeight < _minWeight) {
+           if (kDebugMode) print('⚠️ Hủy tự động: Hàng đã bị nhấc ra trước khi hoàn tất.');
+           _isAutoCompletePending = false;
+           return; 
+        }
+        // -----------------------------------
+
         final success = await completeCurrentWeighing(context, currentWeight);
         
         if (success) {
-          // Phát tiếng bíp nếu bật
           if (settings.beepOnSuccess) {
             AudioService().playSuccessBeep();
           }
         }
-        
         _isAutoCompletePending = false;
       },
     );
