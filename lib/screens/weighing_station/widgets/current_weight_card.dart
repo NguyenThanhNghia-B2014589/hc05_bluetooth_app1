@@ -1,3 +1,4 @@
+//import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../services/bluetooth_service.dart';
 
@@ -28,13 +29,13 @@ class CurrentWeightCard extends StatefulWidget {
     super.dispose();
   }
 
-  void _onTestWeightChanged(String text) {
+  /*void _onTestWeightChanged(String text) {
     final double? weight = double.tryParse(text.trim());
     if (weight != null) {
       // GỌI HÀM CỦA SERVICE
       widget.bluetoothService.setSimulatedWeight(weight);
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -95,26 +96,28 @@ class CurrentWeightCard extends StatefulWidget {
                     const Spacer(), // Đẩy ô test sang phải
                     
                     // Ô Test
-                    SizedBox(
-                      width: 130, // Giới hạn chiều rộng
-                      child: TextField(
-                        controller: _testWeightController,
-                        onChanged: _onTestWeightChanged, // Gọi hàm khi gõ
-                        textAlign: TextAlign.center,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          hintText: 'Nhập (test)',
-                          isDense: true, // Làm cho nó nhỏ gọn
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            //borderSide: BorderSide.none,
+                    /*if (kDebugMode) ...[
+                      SizedBox(
+                        width: 130, // Giới hạn chiều rộng
+                        child: TextField(
+                          controller: _testWeightController,
+                          onChanged: _onTestWeightChanged, // Gọi hàm khi gõ
+                          textAlign: TextAlign.center,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            hintText: 'Nhập (test)',
+                            isDense: true, // Làm cho nó nhỏ gọn
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              //borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         ),
                       ),
-                    ),
+                    ],*/
                   ],
                 ),
 

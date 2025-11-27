@@ -22,7 +22,9 @@ android {
     defaultConfig {
         applicationId = "com.example.hc05_bluetooth_app"
         minSdkVersion(24)
-        targetSdkVersion(29)
+        // Google Play requires targetSdkVersion 33 or higher as of 2025.
+        // Bump to 33 to meet Play Store requirements.
+        targetSdkVersion(33)
         versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName
     }
@@ -42,5 +44,7 @@ flutter {
 
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
-    implementation("cn.hutool:hutool-all:5.8.25")
+    // Add minimal hutool core for dependencies required by `bluetoothlibrary` AAR
+    // (previously used `hutool-all` which pulled in many desktop/server-only dependencies)
+    implementation("cn.hutool:hutool-core:5.8.25")
 }

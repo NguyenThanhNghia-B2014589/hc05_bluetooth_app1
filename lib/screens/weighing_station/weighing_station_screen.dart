@@ -263,52 +263,52 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
                           ),
                           const SizedBox(height: 20),
                           // === KHU VỰC TEST (Chỉ dùng khi dev) ===
-if (kDebugMode) ...[
-  Container(
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-      color: Colors.yellow.shade100,
-      border: Border.all(color: Colors.orange),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('🛠️ DEBUG: Giả lập cân', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextField(
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Nhập trọng lượng (kg)',
-            hintText: 'VD: 50.5',
-            border: OutlineInputBorder(),
-            isDense: true,
-            filled: true,
-            fillColor: Colors.white,
-          ),
-          onChanged: (value) {
-            // 1. Parse số
-            final double? weight = double.tryParse(value);
-            
-            if (weight != null) {
-              // 2. Bắt đầu giả lập dòng chảy dữ liệu
-              _startSimulatingWeight(weight);
-            } else {
-              // Nếu xóa trắng hoặc nhập sai, dừng giả lập
-              _simulationTimer?.cancel();
-            }
-          },
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Lưu ý: Nhập số xong giữ nguyên, hệ thống sẽ tự bắn data liên tục để kích hoạt "Ổn định".',
-          style: TextStyle(fontSize: 11, color: Colors.grey),
-        ),
-      ],
-    ),
-  ),
-  const SizedBox(height: 20),
-],
+                          if (kDebugMode) ...[
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.yellow.shade100,
+                                border: Border.all(color: Colors.orange),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('🛠️ DEBUG: Giả lập cân', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nhập trọng lượng (kg)',
+                                      hintText: 'VD: 50.5',
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                    ),
+                                    onChanged: (value) {
+                                      // 1. Parse số
+                                      final double? weight = double.tryParse(value);
+                                      
+                                      if (weight != null) {
+                                        // 2. Bắt đầu giả lập dòng chảy dữ liệu
+                                        _startSimulatingWeight(weight);
+                                      } else {
+                                        // Nếu xóa trắng hoặc nhập sai, dừng giả lập
+                                        _simulationTimer?.cancel();
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Lưu ý: Nhập số xong giữ nguyên, hệ thống sẽ tự bắn data liên tục để kích hoạt "Ổn định".',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                           ValueListenableBuilder<double>(
                             valueListenable: _bluetoothService.currentWeight,
                             builder: (context, currentWeight, child) {

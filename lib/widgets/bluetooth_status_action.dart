@@ -74,7 +74,7 @@ class BluetoothStatusAction extends StatelessWidget {
                     NotificationService().showToast(
                       context: context,
                       message:
-                          'Không thể kết nối lại, đang chuyển sang trang Scan.',
+                          'Không thể kết nối lại, đang chuyển sang trang kết nối cân.',
                       type: ToastType.error,
                     );
 

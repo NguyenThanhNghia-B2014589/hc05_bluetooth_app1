@@ -171,7 +171,7 @@ class WeighingStationController with ChangeNotifier {
 
         // Kiểm tra xem mã đã cân xuất chưa (không cho phép cân lại nếu cân xuất rồi)
         if (isXuatWeighed) {
-          throw WeighingException('Mã này đã được CÂN XUẤT (trên server). Không thể cân lại!');
+          throw WeighingException('Mã này đã được CÂN XUẤT (trên hệ thống). Không thể cân lại!');
         }
 
         // Lưu cache
