@@ -104,7 +104,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     // --- LỰA CHỌN CŨ ---
           DropdownMenuItem(value: 'Tên phôi keo', child: Text('Tên phôi keo')),
           DropdownMenuItem(value: 'Mã code', child: Text('Mã code')),
-          DropdownMenuItem(value: 'OVNO', child: Text('OVNO')),
+          DropdownMenuItem(value: 'Lệnh', child: Text('OVNO')),
           ],
           onChanged: (value) {
           _controller.updateFilterType(value);

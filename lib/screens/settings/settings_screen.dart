@@ -109,8 +109,22 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.autoCompleteDelay.toDouble(),
                   min: 1,
                   max: 5,
+                  step: 1.0,
+                  valueLabel: (v) => '${v.toInt()}s',
                   onChanged: (value) {
                     settings.updateAutoCompleteDelay(value.toInt());
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildSliderSetting(
+                  label: 'Độ chênh lệch tối đa (test): ${(settings.stabilityThreshold * 1000).toStringAsFixed(0)}g',
+                  value: settings.stabilityThreshold,
+                  min: 0.01,
+                  max: 1.0,
+                  step: 0.01,
+                  valueLabel: (v) => '${(v * 1000).toStringAsFixed(0)}g',
+                  onChanged: (value) {
+                    settings.updateStabilityThreshold(value);
                   },
                 ),
               ],
@@ -196,7 +210,9 @@ class SettingsScreen extends StatelessWidget {
     required double value,
     required double min,
     required double max,
+    double step = 1.0,
     required Function(double) onChanged,
+    String Function(double)? valueLabel,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,8 +226,25 @@ class SettingsScreen extends StatelessWidget {
           value: value,
           min: min,
           max: max,
-          divisions: (max - min).toInt(),
-          label: value.toStringAsFixed(0),
+          divisions: (() {
+            // Calculate divisions based on the provided step. Ensure > 0 or leave null.
+            final double range = (max - min).abs();
+            if (step <= 0) return null;
+            final int calcDiv = (range / step).round();
+            return calcDiv > 0 ? calcDiv : null;
+          })(),
+          label: valueLabel != null
+              ? valueLabel(value)
+              : value.toStringAsFixed(step >= 1 ? 0 : (() {
+                  // compute decimal digits based on step
+                  var decimals = 0;
+                  var s = step;
+                  while (s < 1 && decimals < 6) {
+                    s *= 10;
+                    decimals++;
+                  }
+                  return decimals;
+                })()),
           onChanged: onChanged,
         ),
       ],

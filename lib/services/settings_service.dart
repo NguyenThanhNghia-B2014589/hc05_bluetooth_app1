@@ -18,6 +18,7 @@ class SettingsService with ChangeNotifier {
   int _stabilizationDelay = 5; // Thời gian chờ cân ổn định (giây): 3, 5, 10
   int _autoCompleteDelay = 2; // Thời gian sau khi ổn định trước khi hoàn tất (giây)
   bool _beepOnSuccess = true; // Phát tiếng bíp khi cân thành công
+  double _stabilityThreshold = 0.05; // Độ chênh lệch tối đa (kg) để coi là ổn định (mặc định 50g)
 
   // Getters
   String get historyRange => _historyRange;
@@ -25,6 +26,7 @@ class SettingsService with ChangeNotifier {
   int get stabilizationDelay => _stabilizationDelay;
   int get autoCompleteDelay => _autoCompleteDelay;
   bool get beepOnSuccess => _beepOnSuccess;
+  double get stabilityThreshold => _stabilityThreshold;
 
   // Hàm khởi tạo (sẽ được gọi từ main.dart)
   Future<void> init() async {
@@ -35,9 +37,9 @@ class SettingsService with ChangeNotifier {
     _stabilizationDelay = _prefs.getInt('stabilizationDelay') ?? 5;
     _autoCompleteDelay = _prefs.getInt('autoCompleteDelay') ?? 2;
     _beepOnSuccess = _prefs.getBool('beepOnSuccess') ?? true;
+    _stabilityThreshold = _prefs.getDouble('stabilityThreshold') ?? 0.05;
     
-    // DEBUG: Bật tự động hoàn tất mặc định để test
-    _autoCompleteEnabled = true; // BẬT NGAY ĐỂ TEST
+    // NOTE: Do not force-enable auto-complete - respect user's saved preference
   }
 
   // Cập nhật lịch sử
@@ -75,5 +77,14 @@ class SettingsService with ChangeNotifier {
     _beepOnSuccess = enabled;
     await _prefs.setBool('beepOnSuccess', enabled);
     notifyListeners();
+  }
+
+  // Cập nhật độ chênh lệch ổn định (kg)
+  Future<void> updateStabilityThreshold(double threshold) async {
+    if (threshold >= 0.01 && threshold <= 1.0) {
+      _stabilityThreshold = threshold;
+      await _prefs.setDouble('stabilityThreshold', threshold);
+      notifyListeners();
+    }
   }
 }

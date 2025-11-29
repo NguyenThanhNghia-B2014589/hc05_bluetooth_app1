@@ -8,10 +8,13 @@ import io.flutter.plugin.common.MethodChannel
 import com.hc.bluetoothlibrary.AllBluetoothManage
 import com.hc.bluetoothlibrary.DeviceModule
 import com.hc.bluetoothlibrary.IBluetooth
+import android.media.ToneGenerator
+import android.media.AudioManager
 
 class MainActivity: FlutterActivity(), IBluetooth {
     private val METHOD_CHANNEL = "com.hc.bluetooth.method_channel"
     private val EVENT_CHANNEL = "com.hc.bluetooth.event_channel"
+    private val AUDIO_CHANNEL = "com.hc.audio.channel"
 
     private lateinit var bluetoothManage: AllBluetoothManage
     private var eventSink: EventChannel.EventSink? = null
@@ -84,6 +87,22 @@ class MainActivity: FlutterActivity(), IBluetooth {
             }
         }
 
+        // Audio Channel để phát âm thanh
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "playTone" -> {
+                    try {
+                        val duration = call.argument<Int>("duration") ?: 200
+                        playBeepSound(duration)
+                        result.success("Âm thanh đã phát")
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Lỗi phát âm thanh: ${e.message}", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL).setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, sink: EventChannel.EventSink) {
@@ -94,6 +113,17 @@ class MainActivity: FlutterActivity(), IBluetooth {
                 }
             }
         )
+    }
+    
+    /// Phát tiếng bíp sử dụng ToneGenerator
+    private fun playBeepSound(durationMs: Int) {
+        try {
+            val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+            toneGenerator.startTone(ToneGenerator.TONE_CDMA_CONFIRM, durationMs)
+            android.util.Log.i("AudioDebug", "🔊 Phát Tone CONFIRM ($durationMs ms)")
+        } catch (e: Exception) {
+            android.util.Log.e("AudioDebug", "❌ Lỗi ToneGenerator: ${e.message}")
+        }
     }
     
     private fun sendEvent(event: Map<String, Any?>) { runOnUiThread { eventSink?.success(event) } }

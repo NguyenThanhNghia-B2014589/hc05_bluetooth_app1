@@ -68,6 +68,9 @@ class WeighingStationController with ChangeNotifier {
   Timer? _autoCompleteTimer;
   bool _isAutoCompletePending = false;
 
+  /// Callback để thông báo UI (ví dụ: clear scan field) khi auto-complete hoàn tất
+  VoidCallback? onAutoComplete;
+
   WeighingStationController({required this.bluetoothService});
 
   // --- HÀM TÍNH TOÁN ---
@@ -495,15 +498,19 @@ class WeighingStationController with ChangeNotifier {
       return;
     }
 
+    // Dispose previous monitor if any
+    _stabilityMonitor?.dispose();
+
     _stabilityMonitor = WeightStabilityMonitor(
       stabilizationDelay: settings.stabilizationDelay,
+      stabilityThreshold: settings.stabilityThreshold,
       onStable: () {
         _onWeightStable(context);
       },
     );
     
     if (kDebugMode) {
-      print('📊 Khởi tạo theo dõi ổn định (Delay: ${settings.stabilizationDelay}s)');
+      print('📊 Khởi tạo theo dõi ổn định (Delay: ${settings.stabilizationDelay}s, Threshold: ${settings.stabilityThreshold}kg)');
     }
   }
 
@@ -559,7 +566,14 @@ class WeighingStationController with ChangeNotifier {
         
         if (success) {
           if (settings.beepOnSuccess) {
-            AudioService().playSuccessBeep();
+            if (kDebugMode) print('🎵 Gọi playSuccessBeep()...');
+            await AudioService().playSuccessBeep();
+          }
+          // Thông báo UI để dọn dẹp scan input (clear, stop simulation, ...)
+          try {
+            onAutoComplete?.call();
+          } catch (e) {
+            if (kDebugMode) print('⚠️ Lỗi khi gọi onAutoComplete: $e');
           }
         }
         _isAutoCompletePending = false;
@@ -574,6 +588,8 @@ class WeighingStationController with ChangeNotifier {
     _stabilityMonitor?.dispose();
     _stabilityMonitor = null;
     _isAutoCompletePending = false;
+    // Hủy callback UI để tránh leak
+    onAutoComplete = null;
   }
 
   @override

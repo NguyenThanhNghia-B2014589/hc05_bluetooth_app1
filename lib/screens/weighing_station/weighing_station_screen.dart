@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hc05_bluetooth_app/services/sync_service.dart';
 import '../../services/bluetooth_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/settings_service.dart';
 import './controllers/weighing_station_controller.dart';
 
 // Import các widget con
@@ -46,6 +47,18 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     }
   }
 
+  // Listener to update auto-complete when settings change
+  void _onSettingsChanged() {
+    final settings = SettingsService();
+    if (settings.autoCompleteEnabled) {
+      // start (or re-init) monitor
+      _controller.initWeightMonitoring(context);
+    } else {
+      // stop monitor
+      _controller.cancelAutoComplete();
+    }
+  }
+
   // HÀM GIẢ LẬP TÍN HIỆU CÂN
   void _startSimulatingWeight(double weight) {
     _simulationTimer?.cancel(); 
@@ -72,7 +85,28 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     super.initState();
     // --- KHỞI TẠO CONTROLLER ---
     _controller = WeighingStationController(bluetoothService: _bluetoothService);
-    _controller.initWeightMonitoring(context);
+    // Đăng ký callback để clear scan input khi auto-complete thành công
+    _controller.onAutoComplete = () {
+      if (!mounted) return;
+      // Dừng giả lập (nếu đang mở)
+      final bool wasSimulating = _simulationTimer != null;
+      _simulationTimer?.cancel();
+      _simulationTimer = null;
+      // Xóa ô scan
+      _scanTextController.clear();
+      // Nếu đang chạy timer mô phỏng trước đó, reset trọng lượng hiển thị
+      if (wasSimulating) {
+        _bluetoothService.currentWeight.value = 0.0;
+      }
+      setState(() {});
+    };
+    // Initialize according to current settings
+    if (SettingsService().autoCompleteEnabled) {
+      _controller.initWeightMonitoring(context);
+    }
+
+    // Register listener for future changes
+    SettingsService().addListener(_onSettingsChanged);
     _bluetoothService.connectedDevice.addListener(_onConnectionChange);
     _syncService.syncHistoryQueue();
   }
@@ -83,6 +117,7 @@ class _WeighingStationScreenState extends State<WeighingStationScreen> {
     _controller.dispose();
     _scanTextController.dispose(); // Hủy controller khi màn hình bị hủy
     _bluetoothService.connectedDevice.removeListener(_onConnectionChange);
+    SettingsService().removeListener(_onSettingsChanged);
     super.dispose();
   }
 

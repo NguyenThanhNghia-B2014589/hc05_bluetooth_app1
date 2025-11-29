@@ -123,7 +123,7 @@ class HistoryTable extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                           child: Row(
                             children: [
-                              Text('OVNO : ${summary.ovNO}', style: summaryStyle),
+                              Text('Lệnh : ${summary.ovNO}', style: summaryStyle),
                               const Spacer(flex: 1),
                               Text('Số mẻ: ${summary.xWeighed} / ${summary.yTotal}', style: summaryStyle),
                               const Spacer(flex: 1),

@@ -13,8 +13,8 @@ class WeightStabilityMonitor {
   // Thời gian chờ cân ổn định (giây) - do SettingsService cung cấp
   int _stabilizationDelay;
 
-  // Độ chênh lệch tối đa để coi là ổn định (kg)
-  static const double _stabilityThreshold = 0.05; // 0.05 kg = 50g (từ 20g → 50g)
+  // Độ chênh lệch tối đa để coi là ổn định (kg) - từ SettingsService
+  double _stabilityThreshold;
 
   // Timer để kiểm tra định kỳ
   Timer? _checkTimer;
@@ -22,10 +22,15 @@ class WeightStabilityMonitor {
   // Trạng thái ổn định trước đó (để tránh gọi callback nhiều lần)
   bool _wasStable = false;
 
+  // Thời điểm lần cuối phát hiện sự thay đổi "quan trọng" > stabilityThreshold
+  DateTime _lastSignificantChange = DateTime.now();
+
   WeightStabilityMonitor({
     required int stabilizationDelay,
+    required double stabilityThreshold,
     this.onStable,
-  }) : _stabilizationDelay = stabilizationDelay {
+  })  : _stabilizationDelay = stabilizationDelay,
+        _stabilityThreshold = stabilityThreshold {
     // Bắt đầu timer kiểm tra ổn định
     _startCheckTimer();
   }
@@ -55,6 +60,8 @@ class WeightStabilityMonitor {
     // Nếu danh sách trống, thêm và thoát
     if (_recentWeights.isEmpty) {
       _recentWeights.add(weight);
+      // Mới có dữ liệu, coi là thay đổi mới
+      _lastSignificantChange = DateTime.now();
       return;
     }
 
@@ -69,12 +76,20 @@ class WeightStabilityMonitor {
       }
       _recentWeights.clear();
       _wasStable = false;
+      // Đánh dấu đây là thay đổi lớn -> reset thời điểm thay đổi quan trọng
+      _lastSignificantChange = DateTime.now();
     }
 
     _recentWeights.add(weight);
 
+    // Nếu thay đổi lớn hơn ngưỡng ổn định, đánh dấu thời điểm thay đổi
+    if (changeDiff > _stabilityThreshold) {
+      _lastSignificantChange = DateTime.now();
+    }
+
     // Giữ lại chỉ những giá trị trong khoảng thời gian ổn định
-    final maxSamples = (_stabilizationDelay * 1000) ~/ 100;
+    // Timer chạy mỗi 500ms, nên: maxSamples = (delay_seconds * 1000ms) / 500ms
+    final maxSamples = (_stabilizationDelay * 1000) ~/ 500;
     if (_recentWeights.length > maxSamples) {
       _recentWeights.removeAt(0);
     }
@@ -87,11 +102,18 @@ class WeightStabilityMonitor {
       return;
     }
 
-    // Kiểm tra có đủ mẫu chưa - cần 70% của maxSamples (thay vì 50%)
-    final maxSamples = (_stabilizationDelay * 1000) ~/ 100;
-    if (_recentWeights.length < maxSamples * 0.7) {
-      _wasStable = false;
-      return;
+    // Tính số lượng mẫu cần để đạt stabilizationDelay
+    // Timer chạy mỗi 500ms, nên: maxSamples = (delay_seconds * 1000ms) / 500ms
+    final maxSamples = (_stabilizationDelay * 1000) ~/ 500;
+    
+    // Kiểm tra có đủ mẫu chưa - cần 70% của maxSamples (như trước)
+    final bool hasEnoughSamples = _recentWeights.length >= (maxSamples * 0.7);
+
+    if (!hasEnoughSamples) {
+      if (kDebugMode) {
+        final pct = (((_recentWeights.length / maxSamples) * 100).toStringAsFixed(0));
+        print('📊 Chưa đủ mẫu: ${_recentWeights.length}/$maxSamples ($pct%)');
+      }
     }
 
     final minWeight = _recentWeights.reduce((a, b) => a < b ? a : b);
@@ -100,12 +122,20 @@ class WeightStabilityMonitor {
 
     final isStable = diff <= _stabilityThreshold;
 
+    // Thời gian kể từ lần thay đổi quan trọng gần nhất
+    final elapsedSinceSignificantChange = DateTime.now().difference(_lastSignificantChange).inMilliseconds / 1000.0;
+
     if (kDebugMode) {
-      print('📊 Kiểm tra ổn định: diff=$diff kg (ngưỡng=${_stabilityThreshold}kg), mẫu=${_recentWeights.length}/$maxSamples, ổn định=$isStable');
+      print('📊 Kiểm tra ổn định: diff=$diff kg (ngưỡng=${_stabilityThreshold}kg), mẫu=${_recentWeights.length}/$maxSamples, ổn định=$isStable, elapsedSignificantChange=${elapsedSinceSignificantChange}s');
     }
 
+    // (debug above contains richer message including elapsedSinceSignificantChange)
+
     // Chỉ gọi callback khi chuyển từ không ổn định sang ổn định
-    if (isStable && !_wasStable) {
+    // Bổ sung: Khi trọng lượng không thay đổi trong ít nhất stabilizationDelay (theo thời gian), coi là ổn định
+    final stableByTime = elapsedSinceSignificantChange >= _stabilizationDelay;
+
+    if ((isStable && !_wasStable && hasEnoughSamples) || (stableByTime && !_wasStable)) {
       if (kDebugMode) {
         print('✅ Cân ổn định! (Chênh lệch: $diff kg, Giá trị: ${_recentWeights.last} kg)');
       }
@@ -120,6 +150,7 @@ class WeightStabilityMonitor {
   void reset() {
     _recentWeights.clear();
     _wasStable = false;
+    _lastSignificantChange = DateTime.now();
   }
 
   /// Hủy service
